@@ -3,37 +3,44 @@
 #include <stdio.h>
 #include <time.h>
 #include "net/if.h"
+#include <string.h>
 #include <unordered_map>
 #include <vector>
 
+/* for struct Message, everything is an array of bytes to avoid endianness issues
+ as this struct is sent over the network */
 struct Message {
     uint8_t magic[4];  // MKTK
-    uint64_t device_id;
-    uint32_t interface_name[IF_NAMESIZE];
-    uint64_t mac;  // 2 msb are padding (set as 0)
-    uint32_t ipv4;
+    uint8_t device_id[8];
+    uint8_t interface_name[IF_NAMESIZE];
+    uint8_t mac[6];
+    uint8_t pad[2];  // 2 byte padding because mac is 6 bytes
+    uint8_t ipv4[4];
     uint8_t ipv6[16];
 };
 
 struct InterfaceInfo {
-    uint32_t interface_name[IF_NAMESIZE];
-    uint64_t mac;  // 2 msb are padding
-    uint32_t ipv4;
-    uint8_t ipv6;
+    uint8_t interface_name[IF_NAMESIZE];
+    uint8_t mac[6];
+    uint8_t pad[2];
+    uint8_t ipv4[4];
+    uint8_t ipv6[16];
     uint64_t last_seen_ms;  // timestamp when devices were connected on this specific interface
 };
 
 struct Device {
-    uint64_t last_seen_ms;  // timestamp when device was last seen on any interface
+    uint64_t last_seen_ms;                  // timestamp when device was last seen on any interface
     std::vector<InterfaceInfo> interfaces;  // array of interfaces via 2 devices are connected
 };
 
 struct GlobalData {
-    uint64_t device_id;
-    std::unordered_map<uint64_t, Device> store; // device id : device info
+    uint8_t device_id[8];  // stored as byte array for easier Message building
+    std::unordered_map<uint64_t, Device> store;  // device id : device info
 };
 
-uint64_t get_curr_ms() {
+GlobalData gdata;
+
+static uint64_t get_curr_ms() {
     struct timespec tp = {0, 0};
 
     int err = clock_gettime(CLOCK_MONOTONIC, &tp);
@@ -43,6 +50,19 @@ uint64_t get_curr_ms() {
     }
 
     return tp.tv_sec * 1000 + tp.tv_nsec / 1000 / 1000;
+}
+
+static uint64_t generate_device_id() {}
+
+void create_message(uint8_t* interface_name, uint8_t* mac, uint8_t* ipv4, uint8_t* ipv6) {
+    Message message;
+
+    memcpy(&message.magic, "MKTK", 4);
+    memcpy(&message.device_id, &gdata.device_id, 8);
+    memcpy(&message.interface_name, interface_name, IF_NAMESIZE);
+    memcpy(&message.mac, mac, 6);
+    memcpy(&message.ipv4, ipv4, 4);
+    memcpy(&message.ipv6, ipv6, 16);
 }
 
 int main() {
