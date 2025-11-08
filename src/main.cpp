@@ -1,4 +1,6 @@
 #include <ifaddrs.h>
+#include <linux/random.h>
+#include <sys/random.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <time.h>
@@ -6,6 +8,12 @@
 #include <string.h>
 #include <unordered_map>
 #include <vector>
+
+
+enum ReturnType {
+    SUCCESS = 0,
+    ERROR = 1
+};
 
 /* for struct Message, everything is an array of bytes to avoid endianness issues
  as this struct is sent over the network */
@@ -46,15 +54,13 @@ static uint64_t get_curr_ms() {
     int err = clock_gettime(CLOCK_MONOTONIC, &tp);
     if (err) {
         printf("error in get_curr_ms\n");
-        return 0;
+        return ERROR;
     }
 
     return tp.tv_sec * 1000 + tp.tv_nsec / 1000 / 1000;
 }
 
-static uint64_t generate_device_id() {}
-
-void create_message(uint8_t* interface_name, uint8_t* mac, uint8_t* ipv4, uint8_t* ipv6) {
+static void create_message(uint8_t* interface_name, uint8_t* mac, uint8_t* ipv4, uint8_t* ipv6) {
     Message message;
 
     memcpy(&message.magic, "MKTK", 4);
@@ -64,8 +70,15 @@ void create_message(uint8_t* interface_name, uint8_t* mac, uint8_t* ipv4, uint8_
     memcpy(&message.ipv4, ipv4, 4);
     memcpy(&message.ipv6, ipv6, 16);
 }
-
+    
 int main() {
+    // Set the device id
+    ssize_t err = getrandom(&gdata.device_id, 8, GRND_RANDOM);
+    if (err <= 0) {
+        printf("Error in random num generation\n");
+        return ERROR;
+    }
+
     return 0;
 }
 
