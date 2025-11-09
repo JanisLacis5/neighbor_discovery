@@ -1,15 +1,24 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <net/ethernet.h>
 #include <cstdint>
-#include <iostream>
+#include <cstdio>
+#include <ctime>
+
+/*
+    Hard coded value so that there is no risk different machines having different naming
+    (really unlikely scenario)
+*/
+// Every packet will be sent with a protocol that is meant for local development
+#define ETH_PROTOCOL 0x88B5  // ETH_P_802_EX1 in net/ethernet.h file
 
 inline uint64_t get_curr_ms() {
     struct timespec tp = {0, 0};
 
     int err = clock_gettime(CLOCK_MONOTONIC, &tp);
     if (err) {
-        std::cout << "error in get_curr_ms" << std::endl;
+        printf("error in get_curr_ms");
         return 0;
     }
 

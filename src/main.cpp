@@ -1,5 +1,4 @@
 #include <sys/random.h>
-#include <vector>
 #include "common.h"
 #include "net.h"
 #include "types.h"
@@ -19,7 +18,10 @@ int ifs_refresh() {
     for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
         if (ifa->ifa_addr == NULL || ifa->ifa_flags & IFF_LOOPBACK || !is_eth(ifa))
             continue;
-        process_eth(ifa);
+        int err = process_eth(ifa);
+        if (err) {
+            printf("Error processing interface '%s'\n", ifa->ifa_name);
+        }
     }
 
     freeifaddrs(ifaddr);
@@ -50,7 +52,6 @@ static void del_exp_devices() {
         }
     }
 
-    // Delete old devices
     for (uint64_t id : todel)
         gdata.store.erase(id);
 }
@@ -61,14 +62,20 @@ static void del_exp_ifs() {
     for (auto& [dev_id, device] : gdata.store) {
         std::vector<int> if_todel;
 
-        // Iterate in reverse order so that if_todel is descening and deleting is easier
-        for (int i = (int)device.interfaces.size() - 1; i >= 0; i--) {
+        // Cast to interger to handle substraction below 0
+        int ifs_size = (int)device.interfaces.size();
+
+        /*
+            Iterate in reverse order so that if_todel is descening and deleting is easier.
+            Each delete after the first one would be invalid if if_todel wouldn't be descending because
+            the position for every next element changes if one before it is deleted
+        */
+        for (int i = ifs_size - 1; i >= 0; i--) {
             InterfaceInfo if_info = device.interfaces[i];
             if (curr_time - if_info.last_seen_ms > 30'000)
                 if_todel.push_back(i);
         }
 
-        // Delete old interfaces
         std::vector<InterfaceInfo>::iterator devices_it = device.interfaces.begin();
         for (int i : if_todel)
             device.interfaces.erase(devices_it + i);

@@ -1,11 +1,9 @@
-#include "net.h"
 #include <ifaddrs.h>
-#include <net/if.h>
 #include <net/if_arp.h>
+#include <netinet/in.h>
 #include <netpacket/packet.h>
-#include <stdio.h>
-#include <sys/random.h>
 #include <unistd.h>
+#include <cstring>
 #include "common.h"
 #include "types.h"
 
@@ -29,18 +27,39 @@ bool is_eth(struct ifaddrs* ifa) {
     return access(pathw, F_OK) != 0 && access(pathd, F_OK) == 0;
 }
 
-void process_eth(struct ifaddrs* ifa) {
+int process_eth(struct ifaddrs* ifa) {
     int ifa_idx = if_nametoindex(ifa->ifa_name);
     uint64_t curr_time = get_curr_ms();
 
     if (gdata.sockets.find(ifa_idx) != gdata.sockets.end())
         gdata.sockets[ifa_idx].last_seen_ms = curr_time;
     else {
-        int fd;  // TODO: open a new socket on this interface
+        int fd = socket(AF_PACKET, SOCK_RAW | SOCK_NONBLOCK, htons(ETH_PROTOCOL));
+        if (fd == -1) {
+            printf("Error opening new socket\n");
+            return 1;
+        }
+
+        struct sockaddr_ll addr;
+
+        std::memset(&addr, 0, sizeof(addr));
+        addr.sll_family = AF_PACKET;
+        addr.sll_protocol = htons(ETH_P_ALL);
+        addr.sll_ifindex = ifa_idx;
+
+        int err = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
+        if (err) {
+            printf("Error binding socket to interface '%s'\n", ifa->ifa_name);
+            return 1;
+        }
+
+        // Save new socket's info
         struct SocketInfo sock_info;
         sock_info.fd = fd;
         sock_info.last_seen_ms = curr_time;
         sock_info.last_sent_ms = 0;
-        gdata.sockets[ifa_idx] = {fd, curr_time, curr_time};
+        gdata.sockets[ifa_idx] = sock_info;
     }
+
+    return 0;
 }
