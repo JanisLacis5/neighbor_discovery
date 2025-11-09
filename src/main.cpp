@@ -70,10 +70,24 @@ static void create_message(uint8_t* interface_name, uint8_t* mac, uint8_t* ipv4,
     *dest = message;
 }
 
-static int check_wireless(const char* ifname) {
-    char path[256] = {};
-    snprintf(path, 255, "/sys/class/net/%s/wireless", ifname);
-    return access(path, F_OK) == 0;
+static bool is_eth(struct ifaddrs* ifa) {
+    int family = ifa->ifa_addr->sa_family;
+    if (family != AF_PACKET)
+        return false;
+
+    struct sockaddr_ll* flags = (struct sockaddr_ll*)ifa->ifa_addr;
+    if (flags->sll_hatype != ARPHRD_ETHER)
+        return false;
+
+    char pathw[256] = {};
+    char pathd[256] = {};
+    snprintf(pathw, 255, "/sys/class/net/%s/wireless", ifa->ifa_name);
+
+    // https://www.ibm.com/docs/en/linux-on-systems?topic=ni-matching-devices-1
+    snprintf(pathd, 255, "/sys/class/net/%s/device",
+             ifa->ifa_name);  // TODO: test this one (should check if device is not virtual)
+
+    return access(pathw, F_OK) != 0 && access(pathd, F_OK) == 0;
 }
 
 int main() {
@@ -99,18 +113,9 @@ int main() {
             continue;
 
         // Find all ethernet interfaces
-        int family = ifa->ifa_addr->sa_family;
         struct sockaddr_ll* flags = (struct sockaddr_ll*)ifa->ifa_addr;
-        bool is_eth = (family == AF_PACKET && flags->sll_hatype == ARPHRD_ETHER && !check_wireless(ifa->ifa_name));
-
-        if (is_eth) {
-            printf("%s  address family: %d%s\n", ifa->ifa_name, family,
-                   (family == AF_PACKET)  ? " (AF_PACKET)"
-                   : (family == AF_INET)  ? " (AF_INET)"
-                   : (family == AF_INET6) ? " (AF_INET6)"
-                                          : "");
-            printf("hardware type is ARPHRD_ETHER?: %d\n", flags->sll_hatype == ARPHRD_ETHER);
-        }
+        bool iseth = is_eth(ifa);
+        printf("name: %s, is ethernet: %d\n", ifa->ifa_name, iseth);
     }
 
     return 0;
