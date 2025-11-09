@@ -1,5 +1,6 @@
 #include <sys/random.h>
 #include <sys/epoll.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include "common.h"
 #include "net.h"
@@ -41,7 +42,7 @@ int scks_cleanup() {
     std::vector<int> todel;
 
     for (auto& [idx, fd_info] : gdata.sockets) {
-        if (fd_info.last_seen_ms - curr_time < 15'000)  // filter sockets that are idle for 15 seconds or more
+        if (curr_time - fd_info.last_seen_ms < 15'000)  // filter sockets that are idle for 15 seconds or more
             continue;
         
         // Remove socket from epoll
@@ -53,7 +54,8 @@ int scks_cleanup() {
         todel.push_back(idx);
    }
     for (int idx : todel) {
-        // TODO: close the socket before erase (do it here)
+        int fd = gdata.sockets[idx].fd;
+        close(fd);
         gdata.sockets.erase(idx);
     }
     return 0;

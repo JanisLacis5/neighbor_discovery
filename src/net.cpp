@@ -10,31 +10,31 @@
 #include "types.h"
 
 static int open_socket(int ifa_idx) {
+    // Open a new socket
     int fd = socket(AF_PACKET, SOCK_RAW | SOCK_NONBLOCK, htons(ETH_PROTOCOL));
     if (fd == -1) {
         printf("Error opening new socket\n");
         return -1;
     }
 
-    // Add the new socket to the global epoll
+    // Bind it to the interface at index ifa_idx
+    struct sockaddr_ll addr;
+    std::memset(&addr, 0, sizeof(addr));
+    addr.sll_family = AF_PACKET;
+    addr.sll_protocol = htons(ETH_PROTOCOL);
+    addr.sll_ifindex = ifa_idx;
+    int err = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
+    if (err) {
+        printf("Error binding socket to interface with index '%d'\n", ifa_idx);
+        return -1;
+    }
+
+    // Add this socket to the global epoll
     struct epoll_event ev;
     ev.events = EPOLLIN;
     ev.data.fd = fd;
     if (epoll_ctl(gdata.epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
         printf("Error in epoll_ctl:add\n");
-        return -1;
-    }
-
-    struct sockaddr_ll addr;
-
-    std::memset(&addr, 0, sizeof(addr));
-    addr.sll_family = AF_PACKET;
-    addr.sll_protocol = htons(ETH_P_ALL);
-    addr.sll_ifindex = ifa_idx;
-
-    int err = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
-    if (err) {
-        printf("Error binding socket to interface with index '%d'\n", ifa_idx);
         return -1;
     }
 
