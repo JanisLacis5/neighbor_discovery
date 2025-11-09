@@ -1,8 +1,11 @@
-main: src/main.cpp
-	g++ -pedantic -Wextra -Wshadow -Wmissing-declarations src/main.cpp -o main
+SOURCES := src/main.cpp \
+		   src/message.cpp \
+		   src/net.cpp
+INCLUDES := -Isrc
+FLAGS := -std=c++23 -pedantic -Wextra -Wshadow -Wmissing-declarations
 
-clean:
-	rm main
+main: $(SOURCES) 
+	g++ $(FLAGS) $(INLCUDES) $(SOURCES) -o main
 
 format:
 	test -f .clang-format || { echo "No .clang-format file found"; exit 1; }
