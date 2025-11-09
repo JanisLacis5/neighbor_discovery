@@ -5,6 +5,8 @@
 #include "net.h"
 #include "types.h"
 
+constexpr int MAX_EVENTS = 10;
+
 GlobalData gdata;
 
 int ifs_refresh() {
@@ -49,9 +51,7 @@ int scks_cleanup() {
         }
 
         todel.push_back(idx);
-        
-    }
-
+   }
     for (int idx : todel) {
         // TODO: close the socket before erase (do it here)
         gdata.sockets.erase(idx);
@@ -135,6 +135,7 @@ int main() {
         return -1;
     }
     gdata.epollfd = epollfd;
+    struct epoll_event events[MAX_EVENTS];
 
     while (true) {
         err = ifs_refresh();
@@ -149,15 +150,16 @@ int main() {
             return -1;
         }
 
-        // TODO: see which sockets are ready to read from (from those interfaces that the host machine are conneced to)
-        /*
-            use epoll() to see which sockets i can read from and iterate over those and read
-            for socket in read_ready:
-                Message messsage = read(socket)
-                if message.device_id == gdata.device_id:  // ignore myself
-                    continue;
-                update_store(message)
-        */
+        int nfds = epoll_wait(gdata.epollfd, events, MAX_EVENTS, 1000);
+        if (nfds == -1) {
+            printf("Error in epoll_wait\n");
+            return -1;
+        }
+        
+        for (int i = 0; i < nfds; i++) {
+            // TODO: handle socket reading here
+        }
+
 
         // TODO: brodcast a 'hello' frame as the host machine to everyone on each socket
         /*
