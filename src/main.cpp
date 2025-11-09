@@ -21,6 +21,7 @@ int ifs_refresh() {
         int err = process_eth(ifa);
         if (err) {
             printf("Error processing interface '%s'\n", ifa->ifa_name);
+            return -1;
         }
     }
 
@@ -28,8 +29,11 @@ int ifs_refresh() {
     return 0;
 }
 
-void scks_cleanup() {
-    int curr_time = get_curr_ms();
+int scks_cleanup() {
+    int64_t curr_time = get_curr_ms();
+    if (curr_time < 0)
+        return -1;
+
     std::vector<int> todel;
 
     for (auto& [idx, fd_info] : gdata.sockets) {
@@ -40,11 +44,14 @@ void scks_cleanup() {
 
     for (int idx : todel)
         gdata.sockets.erase(idx);
+    return 0;
 }
 
-static void del_exp_devices() {
+static int del_exp_devices() {
     std::vector<uint64_t> todel;
-    uint64_t curr_time = get_curr_ms();
+    int64_t curr_time = get_curr_ms();
+    if (curr_time < 0)
+        return -1;
 
     for (auto& [dev_id, device] : gdata.store) {
         if (curr_time - device.last_seen_ms > 30'000 || device.interfaces.empty()) {
@@ -54,10 +61,13 @@ static void del_exp_devices() {
 
     for (uint64_t id : todel)
         gdata.store.erase(id);
+    return 0;
 }
 
-static void del_exp_ifs() {
+static int del_exp_ifs() {
     uint64_t curr_time = get_curr_ms();
+    if (curr_time < 0)
+        return -1;
 
     for (auto& [dev_id, device] : gdata.store) {
         std::vector<int> if_todel;
@@ -80,19 +90,29 @@ static void del_exp_ifs() {
         for (int i : if_todel)
             device.interfaces.erase(devices_it + i);
     }
+    return 0;
 }
 
 int main() {
     // Set the device id
-    ssize_t err = getrandom(&gdata.device_id, 8, GRND_RANDOM);
+    int err = getrandom(&gdata.device_id, 8, GRND_RANDOM);
     if (err <= 0) {
         printf("Error in random num generation\n");
         return 1;
     }
 
     while (true) {
-        ifs_refresh();
-        scks_cleanup();
+        err = ifs_refresh();
+        if (err < 0) {
+            printf("Error in the main loop\n");
+            return -1;
+        }
+
+        err = scks_cleanup();
+        if (err < 0) {
+            printf("Error in the main loop\n");
+            return -1;
+        }
 
         // TODO: see which sockets are ready to read from (from those interfaces that the host machine are conneced to)
         /*
@@ -114,8 +134,17 @@ int main() {
                 send(source, dest, struct Message)
         */
 
-        del_exp_devices();
-        del_exp_ifs();
+        err = del_exp_devices();
+        if (err < 0) {
+            printf("Error in the main loop\n");
+            return -1;
+        }
+
+        err = del_exp_ifs();
+        if (err < 0) {
+            printf("Error in the main loop\n");
+            return -1;
+        }
     }
 
     return 0;

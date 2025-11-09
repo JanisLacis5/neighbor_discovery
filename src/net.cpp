@@ -1,3 +1,4 @@
+#include "net.h"
 #include <ifaddrs.h>
 #include <net/if_arp.h>
 #include <netinet/in.h>
@@ -6,7 +7,29 @@
 #include <cstring>
 #include "common.h"
 #include "types.h"
-#include "net.h"
+
+static int open_socket(int ifa_idx) {
+    int fd = socket(AF_PACKET, SOCK_RAW | SOCK_NONBLOCK, htons(ETH_PROTOCOL));
+    if (fd == -1) {
+        printf("Error opening new socket\n");
+        return -1;
+    }
+
+    struct sockaddr_ll addr;
+
+    std::memset(&addr, 0, sizeof(addr));
+    addr.sll_family = AF_PACKET;
+    addr.sll_protocol = htons(ETH_P_ALL);
+    addr.sll_ifindex = ifa_idx;
+
+    int err = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
+    if (err) {
+        printf("Error binding socket to interface with index '%d'\n", ifa_idx);
+        return -1;
+    }
+
+    return fd;
+}
 
 bool is_eth(struct ifaddrs* ifa) {
     int family = ifa->ifa_addr->sa_family;
@@ -35,26 +58,11 @@ int process_eth(struct ifaddrs* ifa) {
     if (gdata.sockets.find(ifa_idx) != gdata.sockets.end())
         gdata.sockets[ifa_idx].last_seen_ms = curr_time;
     else {
-        int fd = socket(AF_PACKET, SOCK_RAW | SOCK_NONBLOCK, htons(ETH_PROTOCOL));
-        if (fd == -1) {
-            printf("Error opening new socket\n");
-            return 1;
+        int fd = open_socket(ifa_idx);
+        if (fd < 0) {
+            return -1;
         }
 
-        struct sockaddr_ll addr;
-
-        std::memset(&addr, 0, sizeof(addr));
-        addr.sll_family = AF_PACKET;
-        addr.sll_protocol = htons(ETH_P_ALL);
-        addr.sll_ifindex = ifa_idx;
-
-        int err = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
-        if (err) {
-            printf("Error binding socket to interface '%s'\n", ifa->ifa_name);
-            return 1;
-        }
-
-        // Save new socket's info
         struct SocketInfo sock_info;
         sock_info.fd = fd;
         sock_info.last_seen_ms = curr_time;
