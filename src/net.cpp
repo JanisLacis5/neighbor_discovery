@@ -5,6 +5,7 @@
 #include <netpacket/packet.h>
 #include <unistd.h>
 #include <cstring>
+#include <sys/epoll.h>
 #include "common.h"
 #include "types.h"
 
@@ -12,6 +13,15 @@ static int open_socket(int ifa_idx) {
     int fd = socket(AF_PACKET, SOCK_RAW | SOCK_NONBLOCK, htons(ETH_PROTOCOL));
     if (fd == -1) {
         printf("Error opening new socket\n");
+        return -1;
+    }
+
+    // Add the new socket to the global epoll
+    struct epoll_event ev;
+    ev.events = EPOLLIN;
+    ev.data.fd = fd;
+    if (epoll_ctl(gdata.epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
+        printf("Error in epoll_ctl:add\n");
         return -1;
     }
 

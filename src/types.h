@@ -39,6 +39,7 @@ struct SocketInfo {
 };
 
 struct GlobalData {
+    int epollfd;
     uint8_t device_id[8];                        // stored as byte array for easier Message building
     std::unordered_map<uint64_t, Device> store;  // device id : device info
 

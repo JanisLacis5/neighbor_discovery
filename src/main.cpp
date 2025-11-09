@@ -1,4 +1,6 @@
 #include <sys/random.h>
+#include <sys/epoll.h>
+#include <fcntl.h>
 #include "common.h"
 #include "net.h"
 #include "types.h"
@@ -39,11 +41,21 @@ int scks_cleanup() {
     for (auto& [idx, fd_info] : gdata.sockets) {
         if (fd_info.last_seen_ms - curr_time < 15'000)  // filter sockets that are idle for 15 seconds or more
             continue;
+        
+        // Remove socket from epoll
+        if (epoll_ctl(gdata.epollfd, EPOLL_CTL_DEL, fd_info.fd, NULL) == -1) {
+            printf("Error in epoll_ctl:del\n");
+            return -1;
+        }
+
         todel.push_back(idx);
+        
     }
 
-    for (int idx : todel)
+    for (int idx : todel) {
+        // TODO: close the socket before erase (do it here)
         gdata.sockets.erase(idx);
+    }
     return 0;
 }
 
@@ -93,13 +105,36 @@ static int del_exp_ifs() {
     return 0;
 }
 
+static int setnonblocking(int fd) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1) {
+        printf("Error in flags/setnonblocking\n");
+        return -1;
+    }
+
+    int err = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    if (err == -1) {
+        printf("Error in setnonblocking\n");
+        return -1;
+    }
+
+    return 0;
+}
+
 int main() {
     // Set the device id
     int err = getrandom(&gdata.device_id, 8, GRND_RANDOM);
     if (err <= 0) {
         printf("Error in random num generation\n");
-        return 1;
+        return -1;
     }
+    
+    int epollfd = epoll_create(1);
+    if (epollfd == -1) {
+        printf("Error in epoll_create\n");
+        return -1;
+    }
+    gdata.epollfd = epollfd;
 
     while (true) {
         err = ifs_refresh();
