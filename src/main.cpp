@@ -1,6 +1,8 @@
 #include <ifaddrs.h>
 #include <linux/random.h>
+#include <net/if_arp.h>
 #include <netdb.h>
+#include <netpacket/packet.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/random.h>
@@ -9,8 +11,6 @@
 #include <unordered_map>
 #include <vector>
 #include "net/if.h"
-#include <net/if_arp.h>
-#include <netpacket/packet.h>
 
 enum ReturnType { SUCCESS = 0, ERROR = 1 };
 
@@ -59,7 +59,7 @@ static uint64_t get_curr_ms() {
     return tp.tv_sec * 1000 + tp.tv_nsec / 1000 / 1000;
 }
 
-static void create_message(uint8_t* interface_name, uint8_t* mac, uint8_t* ipv4, uint8_t* ipv6, Message *dest) {
+static void create_message(uint8_t* interface_name, uint8_t* mac, uint8_t* ipv4, uint8_t* ipv6, Message* dest) {
     Message message;
 
     memcpy(&message.magic, "MKTK", 4);
@@ -105,13 +105,13 @@ int main() {
                 is_eth = true;
             }
         }
-        
+
         if (is_eth) {
             printf("%s  address family: %d%s\n", ifa->ifa_name, family,
-                           (family == AF_PACKET)  ? " (AF_PACKET)"
-                           : (family == AF_INET)  ? " (AF_INET)"
-                           : (family == AF_INET6) ? " (AF_INET6)"
-                                                  : "");
+                   (family == AF_PACKET)  ? " (AF_PACKET)"
+                   : (family == AF_INET)  ? " (AF_INET)"
+                   : (family == AF_INET6) ? " (AF_INET6)"
+                                          : "");
             printf("hardware type is ARPHRD_ETHER?: %d\n", flags->sll_hatype == ARPHRD_ETHER);
         }
     }
