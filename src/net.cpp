@@ -1,3 +1,4 @@
+#include "net.h"
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -5,7 +6,8 @@
 #include <stdio.h>
 #include <sys/random.h>
 #include <unistd.h>
-#include "net.h"
+#include "common.h"
+#include "types.h"
 
 bool is_eth(struct ifaddrs* ifa) {
     int family = ifa->ifa_addr->sa_family;
@@ -25,4 +27,20 @@ bool is_eth(struct ifaddrs* ifa) {
              ifa->ifa_name);  // TODO: test this one (should check if device is not virtual)
 
     return access(pathw, F_OK) != 0 && access(pathd, F_OK) == 0;
+}
+
+void process_eth(struct ifaddrs* ifa) {
+    int ifa_idx = if_nametoindex(ifa->ifa_name);
+    uint64_t curr_time = get_curr_ms();
+
+    if (gdata.sockets.find(ifa_idx) != gdata.sockets.end())
+        gdata.sockets[ifa_idx].last_seen_ms = curr_time;
+    else {
+        int fd;  // TODO: open a new socket on this interface
+        struct SocketInfo sock_info;
+        sock_info.fd = fd;
+        sock_info.last_seen_ms = curr_time;
+        sock_info.last_sent_ms = 0;
+        gdata.sockets[ifa_idx] = {fd, curr_time, curr_time};
+    }
 }
