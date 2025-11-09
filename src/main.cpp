@@ -1,19 +1,18 @@
 #include <ifaddrs.h>
 #include <linux/random.h>
-#include <sys/random.h>
 #include <netdb.h>
 #include <stdio.h>
-#include <time.h>
-#include "net/if.h"
 #include <string.h>
+#include <sys/random.h>
+#include <sys/socket.h>
+#include <time.h>
 #include <unordered_map>
 #include <vector>
+#include "net/if.h"
+#include <net/if_arp.h>
+#include <netpacket/packet.h>
 
-
-enum ReturnType {
-    SUCCESS = 0,
-    ERROR = 1
-};
+enum ReturnType { SUCCESS = 0, ERROR = 1 };
 
 /* for struct Message, everything is an array of bytes to avoid endianness issues
  as this struct is sent over the network */
@@ -42,7 +41,7 @@ struct Device {
 };
 
 struct GlobalData {
-    uint8_t device_id[8];  // stored as byte array for easier Message building
+    uint8_t device_id[8];                        // stored as byte array for easier Message building
     std::unordered_map<uint64_t, Device> store;  // device id : device info
 };
 
@@ -60,7 +59,7 @@ static uint64_t get_curr_ms() {
     return tp.tv_sec * 1000 + tp.tv_nsec / 1000 / 1000;
 }
 
-static void create_message(uint8_t* interface_name, uint8_t* mac, uint8_t* ipv4, uint8_t* ipv6) {
+static void create_message(uint8_t* interface_name, uint8_t* mac, uint8_t* ipv4, uint8_t* ipv6, Message *dest) {
     Message message;
 
     memcpy(&message.magic, "MKTK", 4);
@@ -69,8 +68,10 @@ static void create_message(uint8_t* interface_name, uint8_t* mac, uint8_t* ipv4,
     memcpy(&message.mac, mac, 6);
     memcpy(&message.ipv4, ipv4, 4);
     memcpy(&message.ipv6, ipv6, 16);
+
+    *dest = message;
 }
-    
+
 int main() {
     // Set the device id
     ssize_t err = getrandom(&gdata.device_id, 8, GRND_RANDOM);
@@ -79,25 +80,41 @@ int main() {
         return ERROR;
     }
 
+    // Iterate over each interface
+    struct ifaddrs* ifaddr;
+    struct ifaddrs* ifa;
+    char host[NI_MAXHOST];
+
+    if (getifaddrs(&ifaddr) == -1) {
+        printf("error\n");
+        return -1;
+    }
+
+    // for more information on interface detection, see man getifaddrs example at the bottom
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL)
+            continue;
+
+        // Find all ethernet interfaces
+        int family = ifa->ifa_addr->sa_family;
+        struct sockaddr_ll* flags = (struct sockaddr_ll*)ifa->ifa_addr;
+        bool is_eth = false;
+
+        if (family == AF_PACKET) {
+            if (flags->sll_hatype == ARPHRD_ETHER && !(ifa->ifa_flags & IFF_LOOPBACK)) {
+                is_eth = true;
+            }
+        }
+        
+        if (is_eth) {
+            printf("%s  address family: %d%s\n", ifa->ifa_name, family,
+                           (family == AF_PACKET)  ? " (AF_PACKET)"
+                           : (family == AF_INET)  ? " (AF_INET)"
+                           : (family == AF_INET6) ? " (AF_INET6)"
+                                                  : "");
+            printf("hardware type is ARPHRD_ETHER?: %d\n", flags->sll_hatype == ARPHRD_ETHER);
+        }
+    }
+
     return 0;
 }
-
-// int main() {
-//     struct ifaddrs* ifaddr;
-//     char host[NI_MAXHOST];
-//
-//     if (getifaddrs(&ifaddr) == -1) {
-//         printf("error\n");
-//         return -1;
-//     }
-//
-//     while (ifaddr != NULL) {
-//         if (ifaddr->ifa_addr == NULL)
-//             continue;
-//
-//         int family = ifaddr->ifa_addr->sa_family;
-//
-//         ifaddr = ifaddr->ifa_next;
-//     }
-//     return 0;
-// }
