@@ -6,6 +6,7 @@
 #include <cstring>
 #include "common.h"
 #include "types.h"
+#include "net.h"
 
 bool is_eth(struct ifaddrs* ifa) {
     int family = ifa->ifa_addr->sa_family;
