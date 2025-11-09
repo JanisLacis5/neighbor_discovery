@@ -3,9 +3,9 @@
 #include <net/if_arp.h>
 #include <netinet/in.h>
 #include <netpacket/packet.h>
+#include <sys/epoll.h>
 #include <unistd.h>
 #include <cstring>
-#include <sys/epoll.h>
 #include "common.h"
 #include "types.h"
 
@@ -25,6 +25,7 @@ static int open_socket(int ifa_idx) {
     addr.sll_ifindex = ifa_idx;
     int err = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
     if (err) {
+        close(fd);
         printf("Error binding socket to interface with index '%d'\n", ifa_idx);
         return -1;
     }
@@ -34,6 +35,7 @@ static int open_socket(int ifa_idx) {
     ev.events = EPOLLIN;
     ev.data.fd = fd;
     if (epoll_ctl(gdata.epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
+        close(fd);
         printf("Error in epoll_ctl:add\n");
         return -1;
     }

@@ -1,7 +1,7 @@
-#include <sys/random.h>
-#include <sys/epoll.h>
-#include <unistd.h>
 #include <fcntl.h>
+#include <sys/epoll.h>
+#include <sys/random.h>
+#include <unistd.h>
 #include "common.h"
 #include "net.h"
 #include "types.h"
@@ -26,6 +26,7 @@ int ifs_refresh() {
         int err = process_eth(ifa);
         if (err) {
             printf("Error processing interface '%s'\n", ifa->ifa_name);
+            freeifaddrs(ifaddr);
             return -1;
         }
     }
@@ -44,7 +45,7 @@ int scks_cleanup() {
     for (auto& [idx, fd_info] : gdata.sockets) {
         if (curr_time - fd_info.last_seen_ms < 15'000)  // filter sockets that are idle for 15 seconds or more
             continue;
-        
+
         // Remove socket from epoll
         if (epoll_ctl(gdata.epollfd, EPOLL_CTL_DEL, fd_info.fd, NULL) == -1) {
             printf("Error in epoll_ctl:del\n");
@@ -52,7 +53,7 @@ int scks_cleanup() {
         }
 
         todel.push_back(idx);
-   }
+    }
     for (int idx : todel) {
         int fd = gdata.sockets[idx].fd;
         close(fd);
@@ -79,7 +80,7 @@ static int del_exp_devices() {
 }
 
 static int del_exp_ifs() {
-    uint64_t curr_time = get_curr_ms();
+    int64_t curr_time = get_curr_ms();
     if (curr_time < 0)
         return -1;
 
@@ -107,22 +108,6 @@ static int del_exp_ifs() {
     return 0;
 }
 
-static int setnonblocking(int fd) {
-    int flags = fcntl(fd, F_GETFL, 0);
-    if (flags == -1) {
-        printf("Error in flags/setnonblocking\n");
-        return -1;
-    }
-
-    int err = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-    if (err == -1) {
-        printf("Error in setnonblocking\n");
-        return -1;
-    }
-
-    return 0;
-}
-
 int main() {
     // Set the device id
     int err = getrandom(&gdata.device_id, 8, GRND_RANDOM);
@@ -130,8 +115,8 @@ int main() {
         printf("Error in random num generation\n");
         return -1;
     }
-    
-    int epollfd = epoll_create(1);
+
+    int epollfd = epoll_create1(0);
     if (epollfd == -1) {
         printf("Error in epoll_create\n");
         return -1;
@@ -157,11 +142,10 @@ int main() {
             printf("Error in epoll_wait\n");
             return -1;
         }
-        
+
         for (int i = 0; i < nfds; i++) {
             // TODO: handle socket reading here
         }
-
 
         // TODO: brodcast a 'hello' frame as the host machine to everyone on each socket
         /*
