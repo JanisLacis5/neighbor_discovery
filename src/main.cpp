@@ -112,10 +112,9 @@ int main() {
         if (ifa->ifa_addr == NULL || ifa->ifa_flags & IFF_LOOPBACK)
             continue;
 
-        // Find all ethernet interfaces
-        struct sockaddr_ll* flags = (struct sockaddr_ll*)ifa->ifa_addr;
-        bool iseth = is_eth(ifa);
-        printf("name: %s, is ethernet: %d\n", ifa->ifa_name, iseth);
+        if (is_eth(ifa)) {
+            // Send an ethernet frame in the form struct Message
+        }
     }
 
     return 0;
