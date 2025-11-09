@@ -1,16 +1,14 @@
 #include <ifaddrs.h>
-#include <linux/random.h>
+#include <net/if.h>
 #include <net/if_arp.h>
-#include <netdb.h>
 #include <netpacket/packet.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/random.h>
-#include <sys/socket.h>
 #include <time.h>
+#include <unistd.h>
 #include <unordered_map>
 #include <vector>
-#include "net/if.h"
 
 enum ReturnType { SUCCESS = 0, ERROR = 1 };
 
@@ -72,6 +70,12 @@ static void create_message(uint8_t* interface_name, uint8_t* mac, uint8_t* ipv4,
     *dest = message;
 }
 
+static int check_wireless(const char* ifname) {
+    char path[256] = {};
+    snprintf(path, 255, "/sys/class/net/%s/wireless", ifname);
+    return access(path, F_OK) == 0;
+}
+
 int main() {
     // Set the device id
     ssize_t err = getrandom(&gdata.device_id, 8, GRND_RANDOM);
@@ -83,7 +87,6 @@ int main() {
     // Iterate over each interface
     struct ifaddrs* ifaddr;
     struct ifaddrs* ifa;
-    char host[NI_MAXHOST];
 
     if (getifaddrs(&ifaddr) == -1) {
         printf("error\n");
@@ -92,19 +95,13 @@ int main() {
 
     // for more information on interface detection, see man getifaddrs example at the bottom
     for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-        if (ifa->ifa_addr == NULL)
+        if (ifa->ifa_addr == NULL || ifa->ifa_flags & IFF_LOOPBACK)
             continue;
 
         // Find all ethernet interfaces
         int family = ifa->ifa_addr->sa_family;
         struct sockaddr_ll* flags = (struct sockaddr_ll*)ifa->ifa_addr;
-        bool is_eth = false;
-
-        if (family == AF_PACKET) {
-            if (flags->sll_hatype == ARPHRD_ETHER && !(ifa->ifa_flags & IFF_LOOPBACK)) {
-                is_eth = true;
-            }
-        }
+        bool is_eth = (family == AF_PACKET && flags->sll_hatype == ARPHRD_ETHER && !check_wireless(ifa->ifa_name));
 
         if (is_eth) {
             printf("%s  address family: %d%s\n", ifa->ifa_name, family,
