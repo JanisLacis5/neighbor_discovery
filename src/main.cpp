@@ -38,9 +38,15 @@ struct Device {
     std::vector<InterfaceInfo> interfaces;  // array of interfaces via 2 devices are connected
 };
 
+struct SocketFdInfo {
+    int fd;              // file descriptor
+    uint64_t last_seen;  // needed to close inactive connections
+};
+
 struct GlobalData {
-    uint8_t device_id[8];                        // stored as byte array for easier Message building
-    std::unordered_map<uint64_t, Device> store;  // device id : device info
+    uint8_t device_id[8];                              // stored as byte array for easier Message building
+    std::unordered_map<uint64_t, Device> store;        // device id : device info
+    std::unordered_map<int, SocketFdInfo> socket_fds;  // interface index : file descriptor
 };
 
 GlobalData gdata;
@@ -107,14 +113,33 @@ int main() {
         return -1;
     }
 
-    // for more information on interface detection, see man getifaddrs example at the bottom
+    // Add new interfaces, update existing ones
     for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
         if (ifa->ifa_addr == NULL || ifa->ifa_flags & IFF_LOOPBACK)
             continue;
 
+        std::vector<int> interfaces;
+        uint64_t curr_time = get_curr_ms();
+
         if (is_eth(ifa)) {
-            // Send an ethernet frame in the form struct Message
+            int ifa_idx = if_nametoindex(ifa->ifa_name);
+
+            if (gdata.socket_fds.find(ifa_idx) != gdata.socket_fds.end())
+                gdata.socket_fds[ifa_idx].last_seen = curr_time;
+            else {
+                int fd;  // TODO: open a new socket on this interface
+                gdata.socket_fds[ifa_idx] = {fd, curr_time};
+            }
         }
+    }
+
+    // Clean up old interfaces
+    int curr_time = get_curr_ms();
+    for (auto& [idx, fd_info] : gdata.socket_fds) {
+        if (fd_info.last_seen - curr_time < 15'000)  // filter sockets that are idle for 15 seconds or more
+            continue;
+
+        gdata.socket_fds.erase(idx);
     }
 
     return 0;
