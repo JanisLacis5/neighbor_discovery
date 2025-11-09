@@ -38,15 +38,18 @@ struct Device {
     std::vector<InterfaceInfo> interfaces;  // array of interfaces via 2 devices are connected
 };
 
-struct SocketFdInfo {
+struct SocketInfo {
     int fd;              // file descriptor
     uint64_t last_seen;  // needed to close inactive connections
+    uint64_t last_sent;  // timestamp when the last 'hello' frame was sent
 };
 
 struct GlobalData {
-    uint8_t device_id[8];                              // stored as byte array for easier Message building
-    std::unordered_map<uint64_t, Device> store;        // device id : device info
-    std::unordered_map<int, SocketFdInfo> socket_fds;  // interface index : file descriptor
+    uint8_t device_id[8];                        // stored as byte array for easier Message building
+    std::unordered_map<uint64_t, Device> store;  // device id : device info
+
+    // interface index : socket info (socket open on interface whose idx is equal to the key)
+    std::unordered_map<int, SocketInfo> sockets;
 };
 
 GlobalData gdata;
@@ -104,42 +107,66 @@ int main() {
         return ERROR;
     }
 
-    // Iterate over each interface
-    struct ifaddrs* ifaddr;
-    struct ifaddrs* ifa;
+    while (true) {
+        // Iterate over each interface
+        struct ifaddrs* ifaddr;
+        struct ifaddrs* ifa;
 
-    if (getifaddrs(&ifaddr) == -1) {
-        printf("error\n");
-        return -1;
-    }
+        if (getifaddrs(&ifaddr) == -1) {
+            printf("error\n");
+            return -1;
+        }
 
-    // Add new interfaces, update existing ones
-    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-        if (ifa->ifa_addr == NULL || ifa->ifa_flags & IFF_LOOPBACK)
-            continue;
+        // Add new interfaces, update existing ones
+        for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+            if (ifa->ifa_addr == NULL || ifa->ifa_flags & IFF_LOOPBACK)
+                continue;
 
-        std::vector<int> interfaces;
-        uint64_t curr_time = get_curr_ms();
+            std::vector<int> interfaces;
+            uint64_t curr_time = get_curr_ms();
 
-        if (is_eth(ifa)) {
-            int ifa_idx = if_nametoindex(ifa->ifa_name);
+            if (is_eth(ifa)) {
+                int ifa_idx = if_nametoindex(ifa->ifa_name);
 
-            if (gdata.socket_fds.find(ifa_idx) != gdata.socket_fds.end())
-                gdata.socket_fds[ifa_idx].last_seen = curr_time;
-            else {
-                int fd;  // TODO: open a new socket on this interface
-                gdata.socket_fds[ifa_idx] = {fd, curr_time};
+                if (gdata.sockets.find(ifa_idx) != gdata.sockets.end())
+                    gdata.sockets[ifa_idx].last_seen = curr_time;
+                else {
+                    int fd;  // TODO: open a new socket on this interface
+                    gdata.sockets[ifa_idx] = {fd, curr_time};
+                }
             }
         }
-    }
 
-    // Clean up old interfaces
-    int curr_time = get_curr_ms();
-    for (auto& [idx, fd_info] : gdata.socket_fds) {
-        if (fd_info.last_seen - curr_time < 15'000)  // filter sockets that are idle for 15 seconds or more
-            continue;
+        // Clean up old interfaces
+        int curr_time = get_curr_ms();
+        for (auto& [idx, fd_info] : gdata.sockets) {
+            if (fd_info.last_seen - curr_time < 15'000)  // filter sockets that are idle for 15 seconds or more
+                continue;
 
-        gdata.socket_fds.erase(idx);
+            gdata.sockets.erase(idx);
+        }
+
+        // TODO: see which sockets are ready to read from (from those interfaces that the host machine are conneced to)
+        /*
+            use epoll() to see which sockets i can read from and iterate over those and read
+            for socket in read_ready:
+                Message messsage = read(socket)
+                if message.device_id == gdata.device_id:  // ignore myself
+                    continue;
+                update_store(message)
+        */
+
+        // TODO: brodcast a 'hello' frame as the host machine to everyone on each socket
+        /*
+            for _, [fd, _, last_sent] in gdata.sockets:
+                if curr_time - last_sent < 5sec:
+                    continue
+                source = curr_socket_mac
+                dest = ff:ff:ff:ff:ff:ff  // each fd is bound to only one eth interface so this is fine
+                send(source, dest, struct Message)
+        */
+
+        // TODO: iterate over gdata.store and clean up those machines that are last seen 30 seconds ago or more
     }
 
     return 0;
