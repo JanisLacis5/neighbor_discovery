@@ -39,9 +39,9 @@ struct Device {
 };
 
 struct SocketInfo {
-    int fd;              // file descriptor
-    uint64_t last_seen;  // needed to close inactive connections
-    uint64_t last_sent;  // timestamp when the last 'hello' frame was sent
+    int fd;                 // file descriptor
+    uint64_t last_seen_ms;  // needed to close inactive connections
+    uint64_t last_sent_ms;  // timestamp when the last 'hello' frame was sent
 };
 
 struct GlobalData {
@@ -129,10 +129,14 @@ int main() {
                 int ifa_idx = if_nametoindex(ifa->ifa_name);
 
                 if (gdata.sockets.find(ifa_idx) != gdata.sockets.end())
-                    gdata.sockets[ifa_idx].last_seen = curr_time;
+                    gdata.sockets[ifa_idx].last_seen_ms = curr_time;
                 else {
                     int fd;  // TODO: open a new socket on this interface
-                    gdata.sockets[ifa_idx] = {fd, curr_time};
+                    struct SocketInfo sock_info;
+                    sock_info.fd = fd;
+                    sock_info.last_seen_ms = curr_time;
+                    sock_info.last_sent_ms = 0;
+                    gdata.sockets[ifa_idx] = {fd, curr_time, curr_time};
                 }
             }
         }
@@ -140,7 +144,7 @@ int main() {
         // Clean up old interfaces
         int curr_time = get_curr_ms();
         for (auto& [idx, fd_info] : gdata.sockets) {
-            if (fd_info.last_seen - curr_time < 15'000)  // filter sockets that are idle for 15 seconds or more
+            if (fd_info.last_seen_ms - curr_time < 15'000)  // filter sockets that are idle for 15 seconds or more
                 continue;
 
             gdata.sockets.erase(idx);
@@ -159,14 +163,39 @@ int main() {
         // TODO: brodcast a 'hello' frame as the host machine to everyone on each socket
         /*
             for _, [fd, _, last_sent] in gdata.sockets:
-                if curr_time - last_sent < 5sec:
+                if curr_time - last_sent_ms < 5sec:
                     continue
                 source = curr_socket_mac
                 dest = ff:ff:ff:ff:ff:ff  // each fd is bound to only one eth interface so this is fine
                 send(source, dest, struct Message)
         */
 
-        // TODO: iterate over gdata.store and clean up those machines that are last seen 30 seconds ago or more
+        // Erase expired devices
+        curr_time = get_curr_ms();
+        std::vector<uint64_t> devices_todel;
+        for (auto& [dev_id, device] : gdata.store) {
+            if (curr_time - device.last_seen_ms > 30'000 || device.interfaces.empty()) {
+                devices_todel.push_back(dev_id);
+                continue;
+            }
+
+            std::vector<int> if_todel;
+            // Iterate in reverse order so that if_todel is descening and deleting is easier
+            for (int i = (int)device.interfaces.size() - 1; i >= 0; i--) {
+                InterfaceInfo if_info = device.interfaces[i];
+                if (curr_time - if_info.last_seen_ms > 30'000)
+                    if_todel.push_back(i);
+            }
+
+            // Delete old interfaces
+            std::vector<InterfaceInfo>::iterator devices_it = device.interfaces.begin();
+            for (int i : if_todel)
+                device.interfaces.erase(devices_it + i);
+        }
+
+        // Delete old devices
+        for (uint64_t id : devices_todel)
+            gdata.store.erase(id);
     }
 
     return 0;
