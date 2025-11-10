@@ -123,9 +123,9 @@ static int del_exp_ifaces() {
             the position for every next element changes if one before it is deleted
         */
         for (int i = ifaces_size - 1; i >= 0; i--) {
-            IfaceInfo iface_info = gdata.idx_to_info[device.interfaces[i]];
+            IfaceInfo iface_info = gdata.idx_to_info[device.ifaces[i]];
             if (curr_time - iface_info.last_seen_ms > 30'000) {
-                del_if(iface_info.if_name);
+                del_if(iface_info.iface_name);
                 if_todel.push_back(i);
             }
         }
