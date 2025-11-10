@@ -75,7 +75,8 @@ int scks_cleanup() {
 
     for (int idx = 0; idx < gdata.sockets.size(); idx++) {
         SocketInfo& sock_info = gdata.sockets[idx];
-        if (sock_info.fd == -1 || curr_time - sock_info.last_seen_ms < 15'000)  // filter sockets that are idle for 15 seconds or more
+        if (sock_info.fd == -1 ||
+            curr_time - sock_info.last_seen_ms < 15'000)  // filter sockets that are idle for 15 seconds or more
             continue;
 
         // Remove socket from epoll
