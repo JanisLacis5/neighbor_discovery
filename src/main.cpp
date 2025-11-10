@@ -7,35 +7,13 @@
 #include <cstdio>
 #include <cstring>
 #include "common.h"
+#include "frame.h"
 #include "net.h"
 #include "types.h"
 
 constexpr int MAX_EVENTS = 10;
 
 GlobalData gdata;
-
-void format_frame(uint8_t* buf, ssize_t len, EthFrame* dest) {
-    // Read and check the magic string
-    std::memcpy(buf + ETH_HLEN, dest->magic, 4);
-    if (std::strcmp((char*)&dest->magic, "MKTK"))  // Not our packet
-        return;
-
-    std::memcpy(buf, dest->dest_mac, 6);
-    buf += 6;
-    std::memcpy(buf, dest->source_mac, 6);
-    buf += 6 + 2 + 4;  // we know the protocol already, magic copied already
-    std::memcpy(buf, dest->device_id, 8);
-    buf += 8;
-    std::memcpy(buf, dest->ipv4, 4);
-    buf += 4;
-    std::memcpy(buf, dest->ipv6, 16);
-}
-
-void handle_frame(uint8_t* buf, ssize_t len) {
-    // Read the frame into EthFrame struct
-    struct EthFrame frame;
-    format_frame(buf, len, &frame);
-}
 
 int ifs_refresh() {
     struct ifaddrs* ifaddr;
@@ -178,6 +156,8 @@ int main() {
             while (true) {
                 recvlen = recvfrom(fd, buf, sizeof(buf), 0, NULL, 0);
 
+                if (recvlen == 0)
+                    break;
                 if (recvlen == -1) {
                     if (errno != EAGAIN && errno != EWOULDBLOCK)
                         perror("Error reading socket");
