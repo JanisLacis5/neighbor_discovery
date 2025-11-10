@@ -24,9 +24,9 @@ struct EthFrame {
     // ip's are set to zeroes if they do not exist
 };
 
-struct InterfaceInfo {
+struct IfaceInfo {
     bool is_init = false;  // flag tells whether info in the struct is valid
-    uint8_t if_name[IF_NAMESIZE] = {0};
+    uint8_t iface_name[IF_NAMESIZE] = {0};
     uint8_t mac[8];
     uint8_t ipv4[4] = {0};
     uint8_t ipv6[16] = {0};
@@ -34,8 +34,8 @@ struct InterfaceInfo {
 };
 
 struct Device {
-    uint64_t last_seen_ms;        // timestamp when device was last seen on any interface
-    std::vector<int> interfaces;  // array of interface indexes via 2 devices are connected
+    uint64_t last_seen_ms;    // timestamp when device was last seen on any interface
+    std::vector<int> ifaces;  // array of interface indexes via 2 devices are connected
 };
 
 struct SocketInfo {
@@ -48,8 +48,8 @@ struct GlobalData {
     int epollfd;
     uint8_t device_id[8];                        // stored as byte array for easier Message building
     std::unordered_map<uint64_t, Device> store;  // device id : device info
-    std::vector<int> fd_to_if;                   // tells on which interface socket with `fd` is opened
-    std::vector<InterfaceInfo> idx_to_info;      // maps ifa_idx -> InterfaceInfo struct
+    std::vector<int> fd_to_iface;                // tells on which interface socket with `fd` is opened
+    std::vector<IfaceInfo> idx_to_info;          // maps ifa_idx -> InterfaceInfo struct
 
     // interface index : socket info (socket open on interface whose idx is equal to the key)
     std::vector<SocketInfo> sockets;

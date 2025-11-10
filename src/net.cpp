@@ -44,9 +44,9 @@ static int open_socket(int ifa_idx) {
     }
 
     // Add socket to the global fd -> interface map
-    if (gdata.fd_to_if.size() <= fd)
-        gdata.fd_to_if.resize(fd + 1);
-    gdata.fd_to_if[fd] = ifa_idx;
+    if (gdata.fd_to_iface.size() <= fd)
+        gdata.fd_to_iface.resize(fd + 1);
+    gdata.fd_to_iface[fd] = ifa_idx;
 
     return fd;
 }
@@ -88,12 +88,12 @@ static int update_ifinfo(struct ifaddrs* ifa) {
     if (gdata.idx_to_info.size() <= ifa_idx)
         gdata.idx_to_info.resize(ifa_idx + 1);
 
-    struct InterfaceInfo& if_info = gdata.idx_to_info[ifa_idx];
+    struct IfaceInfo& if_info = gdata.idx_to_info[ifa_idx];
     if_info.last_seen_ms = curr_time;
 
     if (family == AF_PACKET && !if_info.is_init) {
         struct sockaddr_ll* sll = (struct sockaddr_ll*)ifa->ifa_addr;
-        std::memcpy(if_info.if_name, &ifa->ifa_name, sizeof(ifa->ifa_name));
+        std::memcpy(if_info.iface_name, &ifa->ifa_name, sizeof(ifa->ifa_name));
         std::memcpy(if_info.mac, sll->sll_addr, 8);
         if_info.is_init = true;
     }

@@ -16,7 +16,17 @@ constexpr int MAX_EVENTS = 10;
 
 GlobalData gdata;
 
-int ifs_refresh() {
+static bool is_good_iface(struct ifaddrs* ifa) {
+    int family = ifa->ifa_addr->sa_family;
+
+    if (ifa->ifa_addr == NULL || ifa->ifa_flags & IFF_LOOPBACK)
+        return false;
+    if (!is_eth(ifa) && family != AF_INET && family != AF_INET6)  // not ethernet + no ip
+        return false;
+    return true;
+}
+
+int ifaces_refresh() {
     struct ifaddrs* ifaddr;
     struct ifaddrs* ifa;
 
@@ -27,9 +37,7 @@ int ifs_refresh() {
 
     // Add new interfaces, update existing ones. Skip non-ethernet ones
     for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-        int family = ifa->ifa_addr->sa_family;
-        if (ifa->ifa_addr == NULL || ifa->ifa_flags & IFF_LOOPBACK ||
-            (!is_eth(ifa) && family != AF_INET && family != AF_INET6))  // not ethernet + no ip
+        if (!is_good_iface(ifa))
             continue;
 
         int err = process_if(ifa);
@@ -79,7 +87,7 @@ static int del_exp_devices() {
         return -1;
 
     for (auto& [dev_id, device] : gdata.store) {
-        if (curr_time - device.last_seen_ms > 30'000 || device.interfaces.empty()) {
+        if (curr_time - device.last_seen_ms > 30'000 || device.ifaces.empty()) {
             todel.push_back(dev_id);
         }
     }
@@ -93,12 +101,12 @@ static void del_if(uint8_t* ifa_name) {
     int ifa_idx = if_nametoindex((char*)ifa_name);
 
     // Delete info about the interface
-    gdata.idx_to_info[ifa_idx] = InterfaceInfo{};
+    gdata.idx_to_info[ifa_idx] = IfaceInfo{};
 
     // Close socket for this interface
 }
 
-static int del_exp_ifs() {
+static int del_exp_ifaces() {
     int64_t curr_time = get_curr_ms();
     if (curr_time < 0)
         return -1;
@@ -107,24 +115,24 @@ static int del_exp_ifs() {
         std::vector<int> if_todel;
 
         // Cast to interger to handle substraction below 0
-        int ifs_size = (int)device.interfaces.size();
+        int ifaces_size = (int)device.ifaces.size();
 
         /*
             Iterate in reverse order so that if_todel is descening and deleting is easier.
             Each delete after the first one would be invalid if if_todel wouldn't be descending because
             the position for every next element changes if one before it is deleted
         */
-        for (int i = ifs_size - 1; i >= 0; i--) {
-            InterfaceInfo if_info = gdata.idx_to_info[device.interfaces[i]];
-            if (curr_time - if_info.last_seen_ms > 30'000) {
-                del_if(if_info.if_name);
+        for (int i = ifaces_size - 1; i >= 0; i--) {
+            IfaceInfo iface_info = gdata.idx_to_info[device.interfaces[i]];
+            if (curr_time - iface_info.last_seen_ms > 30'000) {
+                del_if(iface_info.if_name);
                 if_todel.push_back(i);
             }
         }
 
-        std::vector<int>::iterator devices_it = device.interfaces.begin();
+        std::vector<int>::iterator devices_it = device.ifaces.begin();
         for (int i : if_todel)
-            device.interfaces.erase(devices_it + i);
+            device.ifaces.erase(devices_it + i);
     }
     return 0;
 }
@@ -148,7 +156,7 @@ int main() {
     struct epoll_event events[MAX_EVENTS];
 
     while (true) {
-        err = ifs_refresh();
+        err = ifaces_refresh();
         if (err < 0) {
             printf("Error in the main loop\n");
             return -1;
@@ -205,7 +213,7 @@ int main() {
             return -1;
         }
 
-        err = del_exp_ifs();
+        err = del_exp_ifaces();
         if (err < 0) {
             printf("Error in the main loop\n");
             return -1;
