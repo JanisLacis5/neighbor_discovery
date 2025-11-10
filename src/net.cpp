@@ -1,5 +1,6 @@
 #include "net.h"
 #include <ifaddrs.h>
+#include <net/if.h>
 #include <net/if_arp.h>
 #include <netinet/in.h>
 #include <netpacket/packet.h>
@@ -12,6 +13,7 @@
 #include "common.h"
 #include "types.h"
 
+// TODO: split into multiple
 static int open_socket(int ifa_idx) {
     // Open a new socket
     int fd = socket(AF_PACKET, SOCK_RAW | SOCK_NONBLOCK, htons(ETH_PROTOCOL));
@@ -75,6 +77,7 @@ static bool all_zero(uint8_t* num, size_t len) {
     return std::all_of(num, num + len, [](uint8_t x) { return x == 0; });
 }
 
+// TODO: split into multiple functions
 static int update_iface_info(struct ifaddrs* ifa) {
     int64_t curr_time = get_curr_ms();
     int family = ifa->ifa_addr->sa_family;
@@ -93,8 +96,8 @@ static int update_iface_info(struct ifaddrs* ifa) {
 
     if (family == AF_PACKET && !if_info.is_init) {
         struct sockaddr_ll* sll = (struct sockaddr_ll*)ifa->ifa_addr;
-        std::memcpy(if_info.iface_name, &ifa->ifa_name, sizeof(ifa->ifa_name));
-        std::memcpy(if_info.mac, sll->sll_addr, 8);
+        std::strncpy((char*)if_info.iface_name, ifa->ifa_name, IF_NAMESIZE);
+        std::memcpy(if_info.mac, sll->sll_addr, sll->sll_halen);
         if_info.is_init = true;
     }
     else if (family == AF_INET && all_zero(&if_info.ipv4[0], 4)) {
@@ -131,7 +134,7 @@ int process_iface(struct ifaddrs* ifa) {
 
         if (gdata.sockets.size() <= ifa_idx)
             gdata.sockets.resize(ifa_idx + 1);
-        struct SocketInfo sock_info = gdata.sockets[ifa_idx];
+        struct SocketInfo& sock_info = gdata.sockets[ifa_idx];
         sock_info.fd = fd;
         sock_info.last_seen_ms = curr_time;
         sock_info.last_sent_ms = 0;

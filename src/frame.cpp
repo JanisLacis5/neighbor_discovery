@@ -1,14 +1,18 @@
 #include "frame.h"
+#include <linux/if_ether.h>
 #include <net/ethernet.h>
 #include <netinet/in.h>
 #include <cstring>
 #include "common.h"
 
-static bool format_frame(uint8_t* buf, ssize_t len, EthFrame* dest) {
+static int format_frame(uint8_t* buf, ssize_t len, EthFrame* dest) {
+    if (len < ETH_HLEN + ETH_PAYLOAD_LEN)
+        return -1;
+
     // Read and check the magic string
     std::memcpy(dest->magic, buf + ETH_HLEN, 4);
-    if (std::strcmp((char*)&dest->magic, "MKTK"))  // Not our packet
-        return false;
+    if (std::memcmp((char*)&dest->magic, "MKTK", 4))  // Not our packet
+        return -1;
 
     std::memcpy(dest->dest_mac, buf, 6);
     buf += 6;
@@ -20,9 +24,10 @@ static bool format_frame(uint8_t* buf, ssize_t len, EthFrame* dest) {
     buf += 4;
     std::memcpy(dest->ipv6, buf, 16);
 
-    return true;
+    return 0;
 }
 
+// TODO: figure one single type of mac address length (6 or 8)
 void create_frame(uint8_t* mac, uint8_t* ipv4, uint8_t* ipv6, EthFrame* dest) {
     // Set the header
     std::memset(dest->dest_mac, 0xff, 6);
@@ -47,7 +52,7 @@ void create_frame(uint8_t* mac, uint8_t* ipv4, uint8_t* ipv6, EthFrame* dest) {
 void handle_frame(uint8_t* buf, ssize_t len) {
     // Read the frame into EthFrame struct
     struct EthFrame frame;
-    if (!format_frame(buf, len, &frame))
+    if (format_frame(buf, len, &frame) == -1)
         return;
 
     // TODO: handle the frame

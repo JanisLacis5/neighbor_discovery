@@ -27,7 +27,7 @@ struct EthFrame {
 struct IfaceInfo {
     bool is_init = false;  // flag tells whether info in the struct is valid
     uint8_t iface_name[IF_NAMESIZE] = {0};
-    uint8_t mac[8];
+    uint8_t mac[6];
     uint8_t ipv4[4] = {0};
     uint8_t ipv6[16] = {0};
     uint64_t last_seen_ms = 0;  // timestamp when devices were connected on this specific interface

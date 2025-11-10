@@ -12,6 +12,7 @@
 #include "net.h"
 #include "types.h"
 
+// TODO: split code between files
 constexpr int MAX_EVENTS = 10;
 
 GlobalData gdata;
@@ -53,7 +54,13 @@ int ifaces_refresh() {
 }
 
 static void close_sock(int iface_idx) {
+    if (iface_idx <= 0 || iface_idx >= gdata.fd_to_iface.size())
+        return;
+
     int fd = gdata.sockets[iface_idx].fd;
+    if (fd < 0)
+        return;
+
     close(fd);
     gdata.sockets[iface_idx].fd = -1;
     gdata.fd_to_iface[fd] = -1;
@@ -68,7 +75,7 @@ int scks_cleanup() {
 
     for (int idx = 0; idx < gdata.sockets.size(); idx++) {
         SocketInfo& sock_info = gdata.sockets[idx];
-        if (curr_time - sock_info.last_seen_ms < 15'000)  // filter sockets that are idle for 15 seconds or more
+        if (sock_info.fd == -1 || curr_time - sock_info.last_seen_ms < 15'000)  // filter sockets that are idle for 15 seconds or more
             continue;
 
         // Remove socket from epoll
@@ -102,8 +109,10 @@ static int del_exp_devices() {
     return 0;
 }
 
-static void del_if(uint8_t* ifa_name) {
+static void del_iface(uint8_t* ifa_name) {
     int ifa_idx = if_nametoindex((char*)ifa_name);
+    if (ifa_idx == 0)
+        return;
 
     // Delete info about the interface
     gdata.idx_to_info[ifa_idx] = IfaceInfo{};
@@ -119,7 +128,7 @@ static void process_exp_iface(struct Device& device, std::vector<int>& ifaces_to
     for (int i = ifaces_size - 1; i >= 0; i--) {
         IfaceInfo iface_info = gdata.idx_to_info[device.ifaces[i]];
         if (curr_time - iface_info.last_seen_ms > 30'000) {
-            del_if(iface_info.iface_name);
+            del_iface(iface_info.iface_name);
             ifaces_todel.push_back(i);
         }
     }
@@ -182,7 +191,7 @@ int main() {
         }
 
         for (int i = 0; i < nfds; i++) {
-            uint8_t buf[ETH_HLEN + ETH_PAYLOAD_LEN + 1];
+            uint8_t buf[1500];
             int fd = events[i].data.fd;
             ssize_t recvlen;
 
@@ -209,7 +218,7 @@ int main() {
             if (curr_time - sock_info.last_sent_ms < 5'000)
                 continue;
 
-            // Create and send the "HELLO" frame
+            // TODO: Create and send the "HELLO" frame
             // EthFrame frame;
             // create_frame()
         }
