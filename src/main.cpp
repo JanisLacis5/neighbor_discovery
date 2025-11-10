@@ -40,7 +40,7 @@ int ifaces_refresh() {
         if (!is_good_iface(ifa))
             continue;
 
-        int err = process_if(ifa);
+        int err = process_iface(ifa);
         if (err) {
             printf("Error processing interface '%s'\n", ifa->ifa_name);
             freeifaddrs(ifaddr);
@@ -50,6 +50,13 @@ int ifaces_refresh() {
 
     freeifaddrs(ifaddr);
     return 0;
+}
+
+static void close_sock(int iface_idx) {
+    int fd = gdata.sockets[iface_idx].fd;
+    close(fd);
+    gdata.sockets[iface_idx].fd = -1;
+    gdata.fd_to_iface[fd] = -1;
 }
 
 int scks_cleanup() {
@@ -73,9 +80,7 @@ int scks_cleanup() {
         todel.push_back(idx);
     }
     for (int idx : todel) {
-        int fd = gdata.sockets[idx].fd;
-        close(fd);
-        gdata.sockets[idx] = SocketInfo{};
+        close_sock(idx);
     }
     return 0;
 }
@@ -102,8 +107,22 @@ static void del_if(uint8_t* ifa_name) {
 
     // Delete info about the interface
     gdata.idx_to_info[ifa_idx] = IfaceInfo{};
+    close_sock(ifa_idx);
+}
 
-    // Close socket for this interface
+static void process_exp_iface(struct Device& device, std::vector<int>& ifaces_todel, int ifaces_size,
+                              int64_t curr_time) {
+    /* Loop iterates in reverse order so that if_todel is descening and deleting is easier.
+    Each delete after the first one would be invalid if if_todel wouldn't be descending because
+    the position for every next element changes if one before it is deleted */
+
+    for (int i = ifaces_size - 1; i >= 0; i--) {
+        IfaceInfo iface_info = gdata.idx_to_info[device.ifaces[i]];
+        if (curr_time - iface_info.last_seen_ms > 30'000) {
+            del_if(iface_info.iface_name);
+            ifaces_todel.push_back(i);
+        }
+    }
 }
 
 static int del_exp_ifaces() {
@@ -112,26 +131,14 @@ static int del_exp_ifaces() {
         return -1;
 
     for (auto& [dev_id, device] : gdata.store) {
-        std::vector<int> if_todel;
+        std::vector<int> ifaces_todel;
 
         // Cast to interger to handle substraction below 0
         int ifaces_size = (int)device.ifaces.size();
-
-        /*
-            Iterate in reverse order so that if_todel is descening and deleting is easier.
-            Each delete after the first one would be invalid if if_todel wouldn't be descending because
-            the position for every next element changes if one before it is deleted
-        */
-        for (int i = ifaces_size - 1; i >= 0; i--) {
-            IfaceInfo iface_info = gdata.idx_to_info[device.ifaces[i]];
-            if (curr_time - iface_info.last_seen_ms > 30'000) {
-                del_if(iface_info.iface_name);
-                if_todel.push_back(i);
-            }
-        }
+        process_exp_iface(device, ifaces_todel, ifaces_size, curr_time);
 
         std::vector<int>::iterator devices_it = device.ifaces.begin();
-        for (int i : if_todel)
+        for (int i : ifaces_todel)
             device.ifaces.erase(devices_it + i);
     }
     return 0;

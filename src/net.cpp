@@ -75,7 +75,7 @@ static bool all_zero(uint8_t* num, size_t len) {
     return std::all_of(num, num + len, [](uint8_t x) { return x == 0; });
 }
 
-static int update_ifinfo(struct ifaddrs* ifa) {
+static int update_iface_info(struct ifaddrs* ifa) {
     int64_t curr_time = get_curr_ms();
     int family = ifa->ifa_addr->sa_family;
 
@@ -112,12 +112,12 @@ static int update_ifinfo(struct ifaddrs* ifa) {
     return 0;
 }
 
-int process_if(struct ifaddrs* ifa) {
+int process_iface(struct ifaddrs* ifa) {
     int ifa_idx = if_nametoindex(ifa->ifa_name);
     int64_t curr_time = get_curr_ms();
 
     // Update interface info
-    if (update_ifinfo(ifa) == -1)
+    if (update_iface_info(ifa) == -1)
         return -1;
 
     // Update socket info for the interface

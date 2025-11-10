@@ -4,6 +4,6 @@
 #include <ifaddrs.h>
 
 bool is_eth(struct ifaddrs* ifa);
-int process_if(struct ifaddrs* ifa);
+int process_iface(struct ifaddrs* ifa);
 
 #endif
