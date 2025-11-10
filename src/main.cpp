@@ -1,7 +1,11 @@
 #include <fcntl.h>
+#include <net/ethernet.h>
 #include <sys/epoll.h>
 #include <sys/random.h>
 #include <unistd.h>
+#include <cerrno>
+#include <cstdio>
+#include <cstring>
 #include "common.h"
 #include "net.h"
 #include "types.h"
@@ -9,6 +13,29 @@
 constexpr int MAX_EVENTS = 10;
 
 GlobalData gdata;
+
+void format_frame(uint8_t *buf, ssize_t len, EthFrame* dest) {
+    // Read and check the magic string
+    std::memcpy(buf + ETH_HLEN, dest->magic, 4);
+    if (std::strcmp((char*)&dest->magic, "MKTK"))  // Not our packet
+        return;
+    
+    std::memcpy(buf, dest->dest_mac, 6);
+    buf += 6;
+    std::memcpy(buf, dest->source_mac, 6);
+    buf += 6 + 2 + 4; // we know the protocol already, magic copied already
+    std::memcpy(buf, dest->device_id, 8);
+    buf += 8;
+    std::memcpy(buf, dest->ipv4, 4);
+    buf += 4;
+    std::memcpy(buf, dest->ipv6, 16);
+} 
+
+void handle_frame(uint8_t *buf, ssize_t len) {
+    // Read the frame into EthFrame struct
+    struct EthFrame frame;
+    format_frame(buf, len, &frame);
+}
 
 int ifs_refresh() {
     struct ifaddrs* ifaddr;
@@ -144,7 +171,21 @@ int main() {
         }
 
         for (int i = 0; i < nfds; i++) {
-            // TODO: handle socket reading here
+            uint8_t buf[ETH_HLEN + ETH_PAYLOAD_LEN + 1];
+            int fd = events[i].data.fd;
+            ssize_t recvlen;
+
+            while (true) {
+                recvlen = recvfrom(fd, buf, sizeof(buf), 0, NULL, 0);
+
+                if (recvlen == -1) {
+                    if (errno != EAGAIN && errno != EWOULDBLOCK) 
+                        perror("Error reading socket");
+                    break;
+                }
+
+                handle_frame(buf, recvlen);
+            }
         }
 
         // TODO: brodcast a 'hello' frame as the host machine to everyone on each socket

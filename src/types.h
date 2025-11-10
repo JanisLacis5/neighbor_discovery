@@ -6,16 +6,22 @@
 #include <unordered_map>
 #include <vector>
 
+#define ETH_PAYLOAD_LEN 32
+
 /* for struct Message, everything is an array of bytes to avoid endianness issues
  as this struct is sent over the network */
-struct Message {
-    uint8_t magic[4];  // MKTK
-    uint8_t device_id[8];
-    uint8_t interface_name[IF_NAMESIZE];
-    uint8_t mac[6];
-    uint8_t pad[2];  // 2 byte padding because mac is 6 bytes
-    uint8_t ipv4[4];
-    uint8_t ipv6[16];
+struct EthFrame {
+    // HEADER (14 bytes)
+    uint8_t dest_mac[6];
+    uint8_t source_mac[6];
+    uint16_t protocol;
+
+    // PAYLOAD (32 bytes)
+    uint8_t magic[4];      // MKTK
+    uint8_t device_id[8];  // ID of the sender
+    uint8_t ipv4[4];       // Sender's IPv4 on the interface
+    uint8_t ipv6[16];      // Sender's IPv6 on the interface
+    // ip's are set to zeroes if they do not exist
 };
 
 struct InterfaceInfo {
