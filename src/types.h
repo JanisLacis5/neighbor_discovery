@@ -34,12 +34,12 @@ struct InterfaceInfo {
 };
 
 struct Device {
-    uint64_t last_seen_ms;                  // timestamp when device was last seen on any interface
-    std::vector<InterfaceInfo> interfaces;  // array of interfaces via 2 devices are connected
+    uint64_t last_seen_ms;        // timestamp when device was last seen on any interface
+    std::vector<int> interfaces;  // array of interface indexes via 2 devices are connected
 };
 
 struct SocketInfo {
-    int fd;                 // file descriptor
+    int fd = -1;            // file descriptor
     uint64_t last_seen_ms;  // needed to close inactive connections
     uint64_t last_sent_ms;  // timestamp when the last 'hello' frame was sent
 };
@@ -52,7 +52,7 @@ struct GlobalData {
     std::vector<InterfaceInfo> idx_to_info;      // maps ifa_idx -> InterfaceInfo struct
 
     // interface index : socket info (socket open on interface whose idx is equal to the key)
-    std::unordered_map<int, SocketInfo> sockets;
+    std::vector<SocketInfo> sockets;
 };
 extern GlobalData gdata;
 

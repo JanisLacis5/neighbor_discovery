@@ -29,7 +29,7 @@ int ifs_refresh() {
     for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
         int family = ifa->ifa_addr->sa_family;
         if (ifa->ifa_addr == NULL || ifa->ifa_flags & IFF_LOOPBACK ||
-            (!is_eth(ifa) && family != AF_INET && family != AF_INET6))
+            (!is_eth(ifa) && family != AF_INET && family != AF_INET6))  // not ethernet + no ip
             continue;
 
         int err = process_if(ifa);
@@ -51,12 +51,13 @@ int scks_cleanup() {
 
     std::vector<int> todel;
 
-    for (auto& [idx, fd_info] : gdata.sockets) {
-        if (curr_time - fd_info.last_seen_ms < 15'000)  // filter sockets that are idle for 15 seconds or more
+    for (int idx = 0; idx < gdata.sockets.size(); idx++) {
+        SocketInfo& sock_info = gdata.sockets[idx];
+        if (curr_time - sock_info.last_seen_ms < 15'000)  // filter sockets that are idle for 15 seconds or more
             continue;
 
         // Remove socket from epoll
-        if (epoll_ctl(gdata.epollfd, EPOLL_CTL_DEL, fd_info.fd, NULL) == -1) {
+        if (epoll_ctl(gdata.epollfd, EPOLL_CTL_DEL, sock_info.fd, NULL) == -1) {
             printf("Error in epoll_ctl:del\n");
             return -1;
         }
@@ -66,7 +67,7 @@ int scks_cleanup() {
     for (int idx : todel) {
         int fd = gdata.sockets[idx].fd;
         close(fd);
-        gdata.sockets.erase(idx);
+        gdata.sockets[idx] = SocketInfo{};
     }
     return 0;
 }
@@ -88,6 +89,15 @@ static int del_exp_devices() {
     return 0;
 }
 
+static void del_if(uint8_t* ifa_name) {
+    int ifa_idx = if_nametoindex((char*)ifa_name);
+
+    // Delete info about the interface
+    gdata.idx_to_info[ifa_idx] = InterfaceInfo{};
+
+    // Close socket for this interface
+}
+
 static int del_exp_ifs() {
     int64_t curr_time = get_curr_ms();
     if (curr_time < 0)
@@ -105,12 +115,14 @@ static int del_exp_ifs() {
             the position for every next element changes if one before it is deleted
         */
         for (int i = ifs_size - 1; i >= 0; i--) {
-            InterfaceInfo if_info = device.interfaces[i];
-            if (curr_time - if_info.last_seen_ms > 30'000)
+            InterfaceInfo if_info = gdata.idx_to_info[device.interfaces[i]];
+            if (curr_time - if_info.last_seen_ms > 30'000) {
+                del_if(if_info.if_name);
                 if_todel.push_back(i);
+            }
         }
 
-        std::vector<InterfaceInfo>::iterator devices_it = device.interfaces.begin();
+        std::vector<int>::iterator devices_it = device.interfaces.begin();
         for (int i : if_todel)
             device.interfaces.erase(devices_it + i);
     }
@@ -174,20 +186,15 @@ int main() {
             }
         }
 
-        // TODO: brodcast a 'hello' frame as the host machine to everyone on each socket
-        /*
-            for _, [fd, _, last_sent] in gdata.sockets:
-                if curr_time - last_sent_ms < 5sec:
-                    continue
-                source = curr_socket_mac
-                dest = ff:ff:ff:ff:ff:ff  // each fd is bound to only one eth interface so this is fine
-                send(source, dest, struct Message)
-        */
         int64_t curr_time = get_curr_ms();
-        for (auto& [idx, sock_info] : gdata.sockets) {
+        for (int idx = 1; idx < gdata.sockets.size(); idx++) {
+            SocketInfo& sock_info = gdata.sockets[idx];
+            if (sock_info.fd == -1)
+                continue;
             if (curr_time - sock_info.last_sent_ms < 5'000)
                 continue;
 
+            // Create and send the "HELLO" frame
             // EthFrame frame;
             // create_frame()
         }

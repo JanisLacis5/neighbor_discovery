@@ -75,14 +75,14 @@ static bool all_zero(uint8_t* num, size_t len) {
     return std::all_of(num, num + len, [](uint8_t x) { return x == 0; });
 }
 
-static void update_ifinfo(struct ifaddrs* ifa) {
+static int update_ifinfo(struct ifaddrs* ifa) {
     int64_t curr_time = get_curr_ms();
     int family = ifa->ifa_addr->sa_family;
 
     int ifa_idx = if_nametoindex(ifa->ifa_name);
     if (ifa_idx == 0) {
         perror("if_nametoindex failed\n");
-        return;
+        return -1;
     }
 
     if (gdata.idx_to_info.size() <= ifa_idx)
@@ -105,13 +105,23 @@ static void update_ifinfo(struct ifaddrs* ifa) {
         struct sockaddr_in6* sin6 = (struct sockaddr_in6*)ifa->ifa_addr;
         std::memcpy(if_info.ipv6, sin6->sin6_addr.s6_addr, 16);
     }
+    else
+        // This function should only receive AF_PACKET, AF_INET or AF_INET6 interfaces
+        return -1;
+
+    return 0;
 }
 
 int process_if(struct ifaddrs* ifa) {
     int ifa_idx = if_nametoindex(ifa->ifa_name);
     int64_t curr_time = get_curr_ms();
 
-    if (gdata.sockets.find(ifa_idx) != gdata.sockets.end())
+    // Update interface info
+    if (update_ifinfo(ifa) == -1)
+        return -1;
+
+    // Update socket info for the interface
+    if (gdata.sockets[ifa_idx].fd != -1)
         gdata.sockets[ifa_idx].last_seen_ms = curr_time;
     else {
         int fd = open_socket(ifa_idx);
@@ -119,13 +129,12 @@ int process_if(struct ifaddrs* ifa) {
             return -1;
         }
 
-        struct SocketInfo sock_info;
+        if (gdata.sockets.size() <= ifa_idx)
+            gdata.sockets.resize(ifa_idx + 1);
+        struct SocketInfo sock_info = gdata.sockets[ifa_idx];
         sock_info.fd = fd;
         sock_info.last_seen_ms = curr_time;
         sock_info.last_sent_ms = 0;
-        gdata.sockets[ifa_idx] = sock_info;
-
-        update_ifinfo(ifa);
     }
 
     return 0;

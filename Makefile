@@ -1,5 +1,5 @@
 SOURCES := src/main.cpp \
-		   src/message.cpp \
+		   src/frame.cpp \
 		   src/net.cpp
 INCLUDES := -Isrc
 FLAGS := -std=c++23 -pedantic -Wextra -Wshadow -Wmissing-declarations
