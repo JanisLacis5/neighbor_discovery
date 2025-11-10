@@ -49,4 +49,6 @@ void handle_frame(uint8_t* buf, ssize_t len) {
     struct EthFrame frame;
     if (!format_frame(buf, len, &frame))
         return;
+
+    // TODO: handle the frame
 }

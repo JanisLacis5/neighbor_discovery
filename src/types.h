@@ -25,12 +25,12 @@ struct EthFrame {
 };
 
 struct InterfaceInfo {
-    uint8_t interface_name[IF_NAMESIZE];
-    uint8_t mac[6];
-    uint8_t pad[2];
-    uint8_t ipv4[4];
-    uint8_t ipv6[16];
-    uint64_t last_seen_ms;  // timestamp when devices were connected on this specific interface
+    bool is_init = false;  // flag tells whether info in the struct is valid
+    uint8_t if_name[IF_NAMESIZE] = {0};
+    uint8_t mac[8];
+    uint8_t ipv4[4] = {0};
+    uint8_t ipv6[16] = {0};
+    uint64_t last_seen_ms = 0;  // timestamp when devices were connected on this specific interface
 };
 
 struct Device {
@@ -48,6 +48,8 @@ struct GlobalData {
     int epollfd;
     uint8_t device_id[8];                        // stored as byte array for easier Message building
     std::unordered_map<uint64_t, Device> store;  // device id : device info
+    std::vector<int> fd_to_if;                   // tells on which interface socket with `fd` is opened
+    std::vector<InterfaceInfo> idx_to_info;      // maps ifa_idx -> InterfaceInfo struct
 
     // interface index : socket info (socket open on interface whose idx is equal to the key)
     std::unordered_map<int, SocketInfo> sockets;

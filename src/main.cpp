@@ -2,6 +2,7 @@
 #include <net/ethernet.h>
 #include <sys/epoll.h>
 #include <sys/random.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #include <cerrno>
 #include <cstdio>
@@ -26,9 +27,12 @@ int ifs_refresh() {
 
     // Add new interfaces, update existing ones. Skip non-ethernet ones
     for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-        if (ifa->ifa_addr == NULL || ifa->ifa_flags & IFF_LOOPBACK || !is_eth(ifa))
+        int family = ifa->ifa_addr->sa_family;
+        if (ifa->ifa_addr == NULL || ifa->ifa_flags & IFF_LOOPBACK ||
+            (!is_eth(ifa) && family != AF_INET && family != AF_INET6))
             continue;
-        int err = process_eth(ifa);
+
+        int err = process_if(ifa);
         if (err) {
             printf("Error processing interface '%s'\n", ifa->ifa_name);
             freeifaddrs(ifaddr);
@@ -121,6 +125,8 @@ int main() {
         return -1;
     }
 
+    // TODO: add some default sizes to gdata vectors
+
     int epollfd = epoll_create1(0);
     if (epollfd == -1) {
         printf("Error in epoll_create\n");
@@ -177,6 +183,14 @@ int main() {
                 dest = ff:ff:ff:ff:ff:ff  // each fd is bound to only one eth interface so this is fine
                 send(source, dest, struct Message)
         */
+        int64_t curr_time = get_curr_ms();
+        for (auto& [idx, sock_info] : gdata.sockets) {
+            if (curr_time - sock_info.last_sent_ms < 5'000)
+                continue;
+
+            // EthFrame frame;
+            // create_frame()
+        }
 
         err = del_exp_devices();
         if (err < 0) {

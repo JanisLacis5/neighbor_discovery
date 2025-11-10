@@ -4,7 +4,10 @@
 #include <netinet/in.h>
 #include <netpacket/packet.h>
 #include <sys/epoll.h>
+#include <sys/socket.h>
 #include <unistd.h>
+#include <algorithm>
+#include <cstdio>
 #include <cstring>
 #include "common.h"
 #include "types.h"
@@ -40,6 +43,11 @@ static int open_socket(int ifa_idx) {
         return -1;
     }
 
+    // Add socket to the global fd -> interface map
+    if (gdata.fd_to_if.size() <= fd)
+        gdata.fd_to_if.resize(fd + 1);
+    gdata.fd_to_if[fd] = ifa_idx;
+
     return fd;
 }
 
@@ -63,9 +71,45 @@ bool is_eth(struct ifaddrs* ifa) {
     return access(pathw, F_OK) != 0 && access(pathd, F_OK) == 0;
 }
 
-int process_eth(struct ifaddrs* ifa) {
+static bool all_zero(uint8_t* num, size_t len) {
+    return std::all_of(num, num + len, [](uint8_t x) { return x == 0; });
+}
+
+static void update_ifinfo(struct ifaddrs* ifa) {
+    int64_t curr_time = get_curr_ms();
+    int family = ifa->ifa_addr->sa_family;
+
     int ifa_idx = if_nametoindex(ifa->ifa_name);
-    uint64_t curr_time = get_curr_ms();
+    if (ifa_idx == 0) {
+        perror("if_nametoindex failed\n");
+        return;
+    }
+
+    if (gdata.idx_to_info.size() <= ifa_idx)
+        gdata.idx_to_info.resize(ifa_idx + 1);
+
+    struct InterfaceInfo& if_info = gdata.idx_to_info[ifa_idx];
+    if_info.last_seen_ms = curr_time;
+
+    if (family == AF_PACKET && !if_info.is_init) {
+        struct sockaddr_ll* sll = (struct sockaddr_ll*)ifa->ifa_addr;
+        std::memcpy(if_info.if_name, &ifa->ifa_name, sizeof(ifa->ifa_name));
+        std::memcpy(if_info.mac, sll->sll_addr, 8);
+        if_info.is_init = true;
+    }
+    else if (family == AF_INET && all_zero(&if_info.ipv4[0], 4)) {
+        struct sockaddr_in* sin = (struct sockaddr_in*)ifa->ifa_addr;
+        std::memcpy(if_info.ipv4, &sin->sin_addr.s_addr, 4);
+    }
+    else if (family == AF_INET6 && all_zero(&if_info.ipv6[0], 16)) {
+        struct sockaddr_in6* sin6 = (struct sockaddr_in6*)ifa->ifa_addr;
+        std::memcpy(if_info.ipv6, sin6->sin6_addr.s6_addr, 16);
+    }
+}
+
+int process_if(struct ifaddrs* ifa) {
+    int ifa_idx = if_nametoindex(ifa->ifa_name);
+    int64_t curr_time = get_curr_ms();
 
     if (gdata.sockets.find(ifa_idx) != gdata.sockets.end())
         gdata.sockets[ifa_idx].last_seen_ms = curr_time;
@@ -80,6 +124,8 @@ int process_eth(struct ifaddrs* ifa) {
         sock_info.last_seen_ms = curr_time;
         sock_info.last_sent_ms = 0;
         gdata.sockets[ifa_idx] = sock_info;
+
+        update_ifinfo(ifa);
     }
 
     return 0;
