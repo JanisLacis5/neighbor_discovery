@@ -37,8 +37,6 @@ int main() {
         return -1;
     }
 
-    // TODO: add some default sizes to gdata vectors
-
     int epollfd = epoll_create1(0);
     if (epollfd == -1) {
         perror("main (epoll_create");

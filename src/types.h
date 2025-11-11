@@ -46,13 +46,13 @@ struct SocketInfo {
 
 struct GlobalData {
     int epollfd;
-    uint8_t device_id[8];                        // stored as byte array for easier Message building
-    std::unordered_map<uint64_t, Device> store;  // device id : device info
-    std::vector<int> fd_to_iface;                // tells on which interface socket with `fd` is opened
-    std::vector<IfaceInfo> idx_to_info;          // maps ifa_idx -> InterfaceInfo struct
+    uint8_t device_id[8];                                 // stored as byte array for easier Message building
+    std::unordered_map<uint64_t, Device> store;           // device id : device info
+    std::vector<int> fd_to_iface{10, -1};                 // tells on which interface socket with `fd` is opened
+    std::vector<IfaceInfo> idx_to_info{10, IfaceInfo{}};  // maps ifa_idx -> InterfaceInfo struct
 
     // interface index : socket info (socket open on interface whose idx is equal to the key)
-    std::vector<SocketInfo> sockets;
+    std::vector<SocketInfo> sockets{10, SocketInfo{}};
 };
 extern GlobalData gdata;
 
