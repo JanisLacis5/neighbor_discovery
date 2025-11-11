@@ -3,6 +3,7 @@
 
 #include <net/if.h>
 #include <cstdint>
+#include <set>
 #include <unordered_map>
 #include <vector>
 
@@ -34,8 +35,8 @@ struct IfaceInfo {
 };
 
 struct Device {
-    uint64_t last_seen_ms;    // timestamp when device was last seen on any interface
-    std::vector<int> ifaces;  // array of interface indexes via 2 devices are connected
+    uint64_t last_seen_ms;  // timestamp when device was last seen on any interface
+    std::set<int> ifaces;   // set of interface indexes via 2 devices are connected
 };
 
 struct SocketInfo {

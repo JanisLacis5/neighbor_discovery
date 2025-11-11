@@ -143,27 +143,18 @@ int ifaces_refresh() {
     return 0;
 }
 
-static void del_iface(uint8_t* ifa_name) {
-    int ifa_idx = if_nametoindex((char*)ifa_name);
-    if (ifa_idx == 0)
-        return;
-
-    // Delete info about the interface
-    gdata.idx_to_info[ifa_idx] = IfaceInfo{};
-    close_sock(ifa_idx);
+static void del_iface(int iface_idx) {
+    gdata.idx_to_info[iface_idx] = IfaceInfo{};
+    close_sock(iface_idx);
 }
 
-static void process_exp_iface(struct Device& device, std::vector<int>& ifaces_todel, int ifaces_size,
-                              int64_t curr_time) {
-    /* Loop iterates in reverse order so that if_todel is descening and deleting is easier.
-    Each delete after the first one would be invalid if if_todel wouldn't be descending because
-    the position for every next element changes if one before it is deleted */
+static void process_exp_iface(struct Device& device, std::vector<int>& ifaces_todel, int64_t curr_time) {
+    for (int iface_idx : device.ifaces) {
+        const IfaceInfo& iface_info = gdata.idx_to_info[iface_idx];
 
-    for (int i = ifaces_size - 1; i >= 0; i--) {
-        IfaceInfo iface_info = gdata.idx_to_info[device.ifaces[i]];
         if (curr_time - iface_info.last_seen_ms > 30'000) {
-            del_iface(iface_info.iface_name);
-            ifaces_todel.push_back(i);
+            del_iface(iface_idx);
+            ifaces_todel.push_back(iface_idx);
         }
     }
 }
@@ -177,14 +168,10 @@ int del_exp_ifaces() {
 
     for (auto& [dev_id, device] : gdata.store) {
         std::vector<int> ifaces_todel;
+        process_exp_iface(device, ifaces_todel, curr_time);
 
-        // Cast to interger to handle substraction below 0
-        int ifaces_size = (int)device.ifaces.size();
-        process_exp_iface(device, ifaces_todel, ifaces_size, curr_time);
-
-        std::vector<int>::iterator devices_it = device.ifaces.begin();
         for (int i : ifaces_todel)
-            device.ifaces.erase(devices_it + i);
+            device.ifaces.erase(i);
     }
     return 0;
 }

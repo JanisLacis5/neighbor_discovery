@@ -6,7 +6,7 @@
 #include <cstring>
 #include "common.h"
 
-static int format_frame(uint8_t* buf, ssize_t len, EthFrame* dest) {
+static int unpack_frame(uint8_t* buf, ssize_t len, EthFrame* dest) {
     if (len < ETH_HLEN + ETH_PAYLOAD_LEN)
         return -1;
 
@@ -49,19 +49,25 @@ static void create_frame(const uint8_t* ipv4, const uint8_t* ipv6, const uint8_t
         std::memcpy(dest->ipv6, ipv6, 16);
 }
 
-void handle_frame(uint8_t* buf, ssize_t len) {
-    // Read the frame into EthFrame struct
+void handle_frame(int iface_idx, uint8_t* buf, ssize_t len) {
     struct EthFrame frame;
-    if (format_frame(buf, len, &frame) == -1)
+    if (unpack_frame(buf, len, &frame) == -1)
         return;
 
-    // TODO: handle the frame
+    int64_t curr_time = get_curr_ms();
+    if (curr_time == -1)
+        return;
+
+    uint64_t sender_device_id;
+    std::memcpy(&sender_device_id, frame.device_id, 8);
+    gdata.store[sender_device_id].last_seen_ms = curr_time;
+    gdata.store[sender_device_id].ifaces.insert(iface_idx);
 }
 
 static void pack_frame(EthFrame& frame, uint8_t* buf) {
     uint8_t offset = 0;
 
-    std::memcpy(buf + offset, frame.dest_mac, 6);    
+    std::memcpy(buf + offset, frame.dest_mac, 6);
     offset += 6;
     std::memcpy(buf + offset, frame.source_mac, 6);
     offset += 6;
@@ -81,7 +87,7 @@ static void send_frame(int fd, int iface_idx, uint8_t* buf, uint8_t* dest_mac) {
 
     addr.sll_ifindex = iface_idx;
     addr.sll_halen = ETH_ALEN;
-    memcpy(addr.sll_addr, dest_mac, ETH_ALEN);
+    std::memcpy(addr.sll_addr, dest_mac, ETH_ALEN);
 
     if (sendto(fd, buf, sizeof(buf), 0, (struct sockaddr*)&addr, sizeof(addr)) < 0)
         perror("send_hello");
@@ -90,7 +96,7 @@ static void send_frame(int fd, int iface_idx, uint8_t* buf, uint8_t* dest_mac) {
 void send_hello(int fd, int iface_idx, const uint8_t* ipv4, const uint8_t* ipv6, const uint8_t* source_mac) {
     EthFrame frame;
     create_frame(ipv4, ipv6, source_mac, &frame);
-    
+
     uint8_t buf[ETH_HLEN + ETH_PAYLOAD_LEN + 1];
     pack_frame(frame, buf);
 

@@ -76,7 +76,8 @@ int main() {
                     break;
                 }
 
-                handle_frame(buf, recvlen);
+                int iface_idx = gdata.fd_to_iface[fd];
+                handle_frame(iface_idx, buf, recvlen);
             }
         }
 
