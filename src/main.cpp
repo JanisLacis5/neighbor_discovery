@@ -82,15 +82,15 @@ int main() {
 
         int64_t curr_time = get_curr_ms();
         for (int idx = 1; idx < gdata.sockets.size(); idx++) {
-            SocketInfo& sock_info = gdata.sockets[idx];
+            const SocketInfo& sock_info = gdata.sockets[idx];
+            const IfaceInfo& iface_info = gdata.idx_to_info[idx];
+
             if (sock_info.fd == -1)
                 continue;
             if (curr_time - sock_info.last_sent_ms < 5'000)
                 continue;
 
-            // TODO: Create and send the "HELLO" frame
-            // EthFrame frame;
-            // create_frame()
+            send_hello(sock_info.fd, iface_info.ipv4, iface_info.ipv6, iface_info.mac);
         }
 
         err = del_exp_devices();

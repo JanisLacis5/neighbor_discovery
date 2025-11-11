@@ -27,7 +27,7 @@ static int format_frame(uint8_t* buf, ssize_t len, EthFrame* dest) {
     return 0;
 }
 
-void create_frame(uint8_t* mac, uint8_t* ipv4, uint8_t* ipv6, EthFrame* dest) {
+static void create_frame(const uint8_t* ipv4, const uint8_t* ipv6, const uint8_t* mac, EthFrame* dest) {
     // Set the header
     std::memset(dest->dest_mac, 0xff, 6);
     std::memcpy(dest->source_mac, mac, 6);
@@ -55,4 +55,9 @@ void handle_frame(uint8_t* buf, ssize_t len) {
         return;
 
     // TODO: handle the frame
+}
+
+int send_hello(const int fd, const uint8_t* ipv4, const uint8_t* ipv6, const uint8_t* source_mac) {
+    EthFrame frame;
+    create_frame(ipv4, ipv6, source_mac, &frame);
 }
