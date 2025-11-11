@@ -90,7 +90,7 @@ int main() {
             if (curr_time - sock_info.last_sent_ms < 5'000)
                 continue;
 
-            send_hello(sock_info.fd, iface_info.ipv4, iface_info.ipv6, iface_info.mac);
+            send_hello(sock_info.fd, idx, iface_info.ipv4, iface_info.ipv6, iface_info.mac);
         }
 
         err = del_exp_devices();

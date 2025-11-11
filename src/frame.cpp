@@ -2,6 +2,7 @@
 #include <linux/if_ether.h>
 #include <net/ethernet.h>
 #include <netinet/in.h>
+#include <netpacket/packet.h>
 #include <cstring>
 #include "common.h"
 
@@ -57,7 +58,24 @@ void handle_frame(uint8_t* buf, ssize_t len) {
     // TODO: handle the frame
 }
 
-int send_hello(const int fd, const uint8_t* ipv4, const uint8_t* ipv6, const uint8_t* source_mac) {
+static void pack_frame(EthFrame& frame, uint8_t* buf) {}
+
+static void send_frame(int fd, int iface_idx, uint8_t* buf, uint8_t* dest_mac) {
+    struct sockaddr_ll addr;
+    addr.sll_ifindex = iface_idx;
+    addr.sll_halen = ETH_ALEN;
+    memcpy(addr.sll_addr, dest_mac, ETH_ALEN);
+    ssize_t n = sendto(fd, buf, sizeof(buf), 0, (struct sockaddr*)&addr, sizeof(addr));
+    if (n < 0)
+        perror("send_hello");
+}
+
+void send_hello(int fd, int iface_idx, const uint8_t* ipv4, const uint8_t* ipv6, const uint8_t* source_mac) {
     EthFrame frame;
     create_frame(ipv4, ipv6, source_mac, &frame);
+
+    uint8_t buf[ETH_HLEN + ETH_PAYLOAD_LEN + 1];
+    pack_frame(frame, buf);
+
+    send_frame(fd, iface_idx, buf, frame.dest_mac);
 }
