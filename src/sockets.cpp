@@ -66,6 +66,8 @@ void close_sock(int iface_idx) {
     if (fd < 0)
         return;
 
+    epoll_ctl(gdata.epollfd, EPOLL_CTL_DEL, fd, NULL);
+
     close(fd);
     gdata.sockets[iface_idx].fd = -1;
     gdata.fd_to_iface[fd] = -1;
@@ -80,15 +82,9 @@ int scks_cleanup() {
 
     for (int idx = 0; idx < gdata.sockets.size(); idx++) {
         SocketInfo& sock_info = gdata.sockets[idx];
-        if (sock_info.fd == -1 ||
-            curr_time - sock_info.last_seen_ms < 15'000)  // filter sockets that are idle for 15 seconds or more
+        // filter sockets that are idle for 15 seconds or more
+        if (sock_info.fd == -1 || curr_time - sock_info.last_seen_ms < 15'000)
             continue;
-
-        // Remove socket from epoll
-        if (epoll_ctl(gdata.epollfd, EPOLL_CTL_DEL, sock_info.fd, NULL) == -1) {
-            perror("scks_cleanup");
-            return -1;
-        }
 
         todel.push_back(idx);
     }

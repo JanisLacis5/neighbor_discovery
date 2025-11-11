@@ -59,7 +59,13 @@ void handle_frame(int iface_idx, uint8_t* buf, ssize_t len) {
         return;
 
     uint64_t sender_device_id;
+    uint64_t my_device_id;
     std::memcpy(&sender_device_id, frame.device_id, 8);
+    std::memcpy(&my_device_id, gdata.device_id, 8);
+
+    if (sender_device_id == my_device_id)
+        return;
+
     gdata.store[sender_device_id].last_seen_ms = curr_time;
     gdata.store[sender_device_id].ifaces.insert(iface_idx);
 }
@@ -82,7 +88,7 @@ static void pack_frame(EthFrame& frame, uint8_t* buf) {
     std::memcpy(buf + offset, frame.ipv6, 16);
 }
 
-static void send_frame(int fd, int iface_idx, uint8_t* buf, uint8_t* dest_mac) {
+static void send_frame(int fd, int iface_idx, uint8_t* buf, size_t len, uint8_t* dest_mac) {
     struct sockaddr_ll addr;
 
     addr.sll_ifindex = iface_idx;
@@ -97,8 +103,8 @@ void send_hello(int fd, int iface_idx, const uint8_t* ipv4, const uint8_t* ipv6,
     EthFrame frame;
     create_frame(ipv4, ipv6, source_mac, &frame);
 
-    uint8_t buf[ETH_HLEN + ETH_PAYLOAD_LEN + 1];
+    uint8_t buf[ETH_HLEN + ETH_PAYLOAD_LEN];
     pack_frame(frame, buf);
 
-    send_frame(fd, iface_idx, buf, frame.dest_mac);
+    send_frame(fd, iface_idx, buf, sizeof(buf), frame.dest_mac);
 }
