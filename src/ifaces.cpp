@@ -56,6 +56,7 @@ bool is_eth(struct ifaddrs* ifa) {
     int family = ifa->ifa_addr->sa_family;
     if (family != AF_PACKET)
         return false;
+    printf("%s is an ethernet socket!!\n", ifa->ifa_name);
 
     struct sockaddr_ll* flags = (struct sockaddr_ll*)ifa->ifa_addr;
     if (flags->sll_hatype != ARPHRD_ETHER)
