@@ -95,7 +95,7 @@ static void send_frame(int fd, int iface_idx, uint8_t* buf, size_t len, uint8_t*
     addr.sll_halen = ETH_ALEN;
     std::memcpy(addr.sll_addr, dest_mac, ETH_ALEN);
 
-    if (sendto(fd, buf, sizeof(buf), 0, (struct sockaddr*)&addr, sizeof(addr)) < 0)
+    if (sendto(fd, buf, len, 0, (struct sockaddr*)&addr, sizeof(struct sockaddr_ll)) < 0)
         perror("send_hello");
 }
 
