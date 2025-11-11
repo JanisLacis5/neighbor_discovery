@@ -14,6 +14,52 @@ static bool all_zero(uint8_t* num, size_t len) {
     return std::all_of(num, num + len, [](uint8_t x) { return x == 0; });
 }
 
+static void fill_info_raw(struct ifaddrs* ifa, IfaceInfo& iface_info) {
+    struct sockaddr_ll* sll = (struct sockaddr_ll*)ifa->ifa_addr;
+    std::strncpy((char*)iface_info.iface_name, ifa->ifa_name, IF_NAMESIZE);
+    std::memcpy(iface_info.mac, sll->sll_addr, sll->sll_halen);
+    iface_info.is_init = true;
+}
+
+static void fill_info_ip4(struct ifaddrs* ifa, IfaceInfo& iface_info) {
+    struct sockaddr_in* sin = (struct sockaddr_in*)ifa->ifa_addr;
+    std::memcpy(iface_info.ipv4, &sin->sin_addr.s_addr, 4);
+}
+
+static void fill_info_ip6(struct ifaddrs* ifa, IfaceInfo& iface_info) {
+    struct sockaddr_in6* sin6 = (struct sockaddr_in6*)ifa->ifa_addr;
+    std::memcpy(iface_info.ipv6, sin6->sin6_addr.s6_addr, 16);
+}
+
+static int update_iface_info(struct ifaddrs* ifa) {
+    int64_t curr_time = get_curr_ms();
+    int family = ifa->ifa_addr->sa_family;
+
+    int ifa_idx = if_nametoindex(ifa->ifa_name);
+    if (ifa_idx == 0) {
+        perror("update_iface_info");
+        return -1;
+    }
+
+    if (gdata.idx_to_info.size() <= ifa_idx)
+        gdata.idx_to_info.resize(ifa_idx + 1);
+
+    struct IfaceInfo& iface_info = gdata.idx_to_info[ifa_idx];
+    iface_info.last_seen_ms = curr_time;
+
+    if (family == AF_PACKET && !iface_info.is_init)
+        fill_info_raw(ifa, iface_info);
+    else if (family == AF_INET && all_zero(&iface_info.ipv4[0], 4))
+        fill_info_ip4(ifa, iface_info);
+    else if (family == AF_INET6 && all_zero(&iface_info.ipv6[0], 16))
+        fill_info_ip6(ifa, iface_info);
+    else
+        // This function should only receive AF_PACKET, AF_INET or AF_INET6 interfaces
+        return -1;
+
+    return 0;
+}
+
 bool is_eth(struct ifaddrs* ifa) {
     int family = ifa->ifa_addr->sa_family;
     if (family != AF_PACKET)
@@ -34,44 +80,6 @@ bool is_eth(struct ifaddrs* ifa) {
     return access(pathw, F_OK) != 0 && access(pathd, F_OK) == 0;
 }
 
-// TODO: split into multiple functions
-static int update_iface_info(struct ifaddrs* ifa) {
-    int64_t curr_time = get_curr_ms();
-    int family = ifa->ifa_addr->sa_family;
-
-    int ifa_idx = if_nametoindex(ifa->ifa_name);
-    if (ifa_idx == 0) {
-        perror("update_iface_info");
-        return -1;
-    }
-
-    if (gdata.idx_to_info.size() <= ifa_idx)
-        gdata.idx_to_info.resize(ifa_idx + 1);
-
-    struct IfaceInfo& if_info = gdata.idx_to_info[ifa_idx];
-    if_info.last_seen_ms = curr_time;
-
-    if (family == AF_PACKET && !if_info.is_init) {
-        struct sockaddr_ll* sll = (struct sockaddr_ll*)ifa->ifa_addr;
-        std::strncpy((char*)if_info.iface_name, ifa->ifa_name, IF_NAMESIZE);
-        std::memcpy(if_info.mac, sll->sll_addr, sll->sll_halen);
-        if_info.is_init = true;
-    }
-    else if (family == AF_INET && all_zero(&if_info.ipv4[0], 4)) {
-        struct sockaddr_in* sin = (struct sockaddr_in*)ifa->ifa_addr;
-        std::memcpy(if_info.ipv4, &sin->sin_addr.s_addr, 4);
-    }
-    else if (family == AF_INET6 && all_zero(&if_info.ipv6[0], 16)) {
-        struct sockaddr_in6* sin6 = (struct sockaddr_in6*)ifa->ifa_addr;
-        std::memcpy(if_info.ipv6, sin6->sin6_addr.s6_addr, 16);
-    }
-    else
-        // This function should only receive AF_PACKET, AF_INET or AF_INET6 interfaces
-        return -1;
-
-    return 0;
-}
-
 int process_iface(struct ifaddrs* ifa) {
     int ifa_idx = if_nametoindex(ifa->ifa_name);
     int64_t curr_time = get_curr_ms();
@@ -85,9 +93,8 @@ int process_iface(struct ifaddrs* ifa) {
         gdata.sockets[ifa_idx].last_seen_ms = curr_time;
     else {
         int fd = open_socket(ifa_idx);
-        if (fd < 0) {
+        if (fd == -1)
             return -1;
-        }
 
         if (gdata.sockets.size() <= ifa_idx)
             gdata.sockets.resize(ifa_idx + 1);

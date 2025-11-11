@@ -7,37 +7,48 @@
 #include "common.h"
 #include "types.h"
 
-// TODO: split into multiple
+static int bind_sock(int fd, int iface_idx) {
+    struct sockaddr_ll addr;
+    std::memset(&addr, 0, sizeof(addr));
+
+    addr.sll_family = AF_PACKET;
+    addr.sll_protocol = htons(ETH_PROTOCOL);
+    addr.sll_ifindex = iface_idx;
+
+    if (bind(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
+        close(fd);
+        perror("bind_socket");
+        return -1;
+    }
+    return 0;
+}
+
+static int add_to_epoll(int fd) {
+    struct epoll_event ev;
+
+    ev.events = EPOLLIN;
+    ev.data.fd = fd;
+
+    if (epoll_ctl(gdata.epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
+        close(fd);
+        perror("open_socket (epoll_ctl)");
+        return -1;
+    }
+    return 0;
+}
+
 int open_socket(int iface_idx) {
-    // Open a new socket
     int fd = socket(AF_PACKET, SOCK_RAW | SOCK_NONBLOCK, htons(ETH_PROTOCOL));
     if (fd == -1) {
         perror("open_socket (socket)");
         return -1;
     }
 
-    // Bind it to the interface at index ifa_idx
-    struct sockaddr_ll addr;
-    std::memset(&addr, 0, sizeof(addr));
-    addr.sll_family = AF_PACKET;
-    addr.sll_protocol = htons(ETH_PROTOCOL);
-    addr.sll_ifindex = iface_idx;
-    int err = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
-    if (err) {
-        close(fd);
-        perror("open_socket (bind)");
+    if (bind_sock(fd, iface_idx) == -1)
         return -1;
-    }
 
-    // Add this socket to the global epoll
-    struct epoll_event ev;
-    ev.events = EPOLLIN;
-    ev.data.fd = fd;
-    if (epoll_ctl(gdata.epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
-        close(fd);
-        perror("open_socket (epoll_ctl)");
+    if (add_to_epoll(fd) == -1)
         return -1;
-    }
 
     // Add socket to the global fd -> interface map
     if (gdata.fd_to_iface.size() <= fd)

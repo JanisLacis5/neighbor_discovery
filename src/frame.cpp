@@ -27,7 +27,6 @@ static int format_frame(uint8_t* buf, ssize_t len, EthFrame* dest) {
     return 0;
 }
 
-// TODO: figure one single type of mac address length (6 or 8)
 void create_frame(uint8_t* mac, uint8_t* ipv4, uint8_t* ipv6, EthFrame* dest) {
     // Set the header
     std::memset(dest->dest_mac, 0xff, 6);
