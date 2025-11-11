@@ -18,7 +18,7 @@ inline int64_t get_curr_ms() {
 
     int err = clock_gettime(CLOCK_MONOTONIC, &tp);
     if (err) {
-        printf("error in get_curr_ms");
+        perror("get_curr_ms");
         return -1;
     }
 

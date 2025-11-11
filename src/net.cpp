@@ -18,7 +18,7 @@ static int open_socket(int ifa_idx) {
     // Open a new socket
     int fd = socket(AF_PACKET, SOCK_RAW | SOCK_NONBLOCK, htons(ETH_PROTOCOL));
     if (fd == -1) {
-        printf("Error opening new socket\n");
+        perror("open_socket (socket)");
         return -1;
     }
 
@@ -31,7 +31,7 @@ static int open_socket(int ifa_idx) {
     int err = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
     if (err) {
         close(fd);
-        printf("Error binding socket to interface with index '%d'\n", ifa_idx);
+        perror("open_socket (bind)");
         return -1;
     }
 
@@ -41,7 +41,7 @@ static int open_socket(int ifa_idx) {
     ev.data.fd = fd;
     if (epoll_ctl(gdata.epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
         close(fd);
-        printf("Error in epoll_ctl:add\n");
+        perror("open_socket (epoll_ctl)");
         return -1;
     }
 
@@ -84,7 +84,7 @@ static int update_iface_info(struct ifaddrs* ifa) {
 
     int ifa_idx = if_nametoindex(ifa->ifa_name);
     if (ifa_idx == 0) {
-        perror("if_nametoindex failed\n");
+        perror("update_iface_info");
         return -1;
     }
 

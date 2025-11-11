@@ -32,7 +32,7 @@ int ifaces_refresh() {
     struct ifaddrs* ifa;
 
     if (getifaddrs(&ifaddr) == -1) {
-        printf("error\n");
+        perror("ifaces_refresh (getifaddrs)");
         return -1;
     }
 
@@ -43,7 +43,7 @@ int ifaces_refresh() {
 
         int err = process_iface(ifa);
         if (err) {
-            printf("Error processing interface '%s'\n", ifa->ifa_name);
+            perror("ifaces_refresh (loop)");
             freeifaddrs(ifaddr);
             return -1;
         }
@@ -81,7 +81,7 @@ int scks_cleanup() {
 
         // Remove socket from epoll
         if (epoll_ctl(gdata.epollfd, EPOLL_CTL_DEL, sock_info.fd, NULL) == -1) {
-            printf("Error in epoll_ctl:del\n");
+            perror("scks_cleanup");
             return -1;
         }
 
@@ -96,8 +96,10 @@ int scks_cleanup() {
 static int del_exp_devices() {
     std::vector<uint64_t> todel;
     int64_t curr_time = get_curr_ms();
-    if (curr_time < 0)
+    if (curr_time < 0) {
+        perror("del_exp_devices");
         return -1;
+    }
 
     for (auto& [dev_id, device] : gdata.store) {
         if (curr_time - device.last_seen_ms > 30'000 || device.ifaces.empty()) {
@@ -137,8 +139,10 @@ static void process_exp_iface(struct Device& device, std::vector<int>& ifaces_to
 
 static int del_exp_ifaces() {
     int64_t curr_time = get_curr_ms();
-    if (curr_time < 0)
+    if (curr_time < 0) {
+        perror("del_exp_ifaces");
         return -1;
+    }
 
     for (auto& [dev_id, device] : gdata.store) {
         std::vector<int> ifaces_todel;
@@ -158,7 +162,7 @@ int main() {
     // Set the device id
     int err = getrandom(&gdata.device_id, 8, GRND_RANDOM);
     if (err <= 0) {
-        printf("Error in random num generation\n");
+        perror("main (random num generation)");
         return -1;
     }
 
@@ -166,7 +170,7 @@ int main() {
 
     int epollfd = epoll_create1(0);
     if (epollfd == -1) {
-        printf("Error in epoll_create\n");
+        perror("main (epoll_create");
         return -1;
     }
     gdata.epollfd = epollfd;
@@ -174,20 +178,16 @@ int main() {
 
     while (true) {
         err = ifaces_refresh();
-        if (err < 0) {
-            printf("Error in the main loop\n");
+        if (err < 0)
             return -1;
-        }
 
         err = scks_cleanup();
-        if (err < 0) {
-            printf("Error in the main loop\n");
+        if (err < 0)
             return -1;
-        }
 
         int nfds = epoll_wait(gdata.epollfd, events, MAX_EVENTS, 1000);
         if (nfds == -1) {
-            printf("Error in epoll_wait\n");
+            perror("main (epoll_wait)");
             return -1;
         }
 
@@ -203,7 +203,7 @@ int main() {
                     break;
                 if (recvlen == -1) {
                     if (errno != EAGAIN && errno != EWOULDBLOCK)
-                        perror("Error reading socket");
+                        perror("main (reading socket)");
                     break;
                 }
 
@@ -225,16 +225,12 @@ int main() {
         }
 
         err = del_exp_devices();
-        if (err < 0) {
-            printf("Error in the main loop\n");
+        if (err < 0)
             return -1;
-        }
 
         err = del_exp_ifaces();
-        if (err < 0) {
-            printf("Error in the main loop\n");
+        if (err < 0)
             return -1;
-        }
     }
 
     return 0;
