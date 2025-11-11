@@ -68,6 +68,12 @@ void handle_frame(int iface_idx, uint8_t* buf, ssize_t len) {
 
     gdata.store[sender_device_id].last_seen_ms = curr_time;
     gdata.store[sender_device_id].ifaces.insert(iface_idx);
+
+    // DEBUG
+    printf("received frame from %ld, its mac address is ", sender_device_id);
+    printf("%02x:%02x:%02x:%02x:%02x:%02x\n",
+       frame.source_mac[0], frame.source_mac[1], frame.source_mac[2],
+       frame.source_mac[3], frame.source_mac[4], frame.source_mac[5]);
 }
 
 static void pack_frame(EthFrame& frame, uint8_t* buf) {
