@@ -1,6 +1,7 @@
 SOURCES := src/main.cpp \
 		   src/frame.cpp \
-		   src/net.cpp
+		   src/ifaces.cpp \
+		   src/sockets.cpp
 INCLUDES := -Isrc
 FLAGS := -std=c++23 -pedantic -Wextra -Wshadow -Wmissing-declarations
 

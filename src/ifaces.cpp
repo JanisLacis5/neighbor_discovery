@@ -1,56 +1,17 @@
-#include "net.h"
+#include "ifaces.h"
 #include <ifaddrs.h>
-#include <net/if.h>
 #include <net/if_arp.h>
 #include <netinet/in.h>
 #include <netpacket/packet.h>
-#include <sys/epoll.h>
-#include <sys/socket.h>
 #include <unistd.h>
 #include <algorithm>
-#include <cstdio>
 #include <cstring>
 #include "common.h"
+#include "sockets.h"
 #include "types.h"
 
-// TODO: split into multiple
-static int open_socket(int ifa_idx) {
-    // Open a new socket
-    int fd = socket(AF_PACKET, SOCK_RAW | SOCK_NONBLOCK, htons(ETH_PROTOCOL));
-    if (fd == -1) {
-        perror("open_socket (socket)");
-        return -1;
-    }
-
-    // Bind it to the interface at index ifa_idx
-    struct sockaddr_ll addr;
-    std::memset(&addr, 0, sizeof(addr));
-    addr.sll_family = AF_PACKET;
-    addr.sll_protocol = htons(ETH_PROTOCOL);
-    addr.sll_ifindex = ifa_idx;
-    int err = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
-    if (err) {
-        close(fd);
-        perror("open_socket (bind)");
-        return -1;
-    }
-
-    // Add this socket to the global epoll
-    struct epoll_event ev;
-    ev.events = EPOLLIN;
-    ev.data.fd = fd;
-    if (epoll_ctl(gdata.epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
-        close(fd);
-        perror("open_socket (epoll_ctl)");
-        return -1;
-    }
-
-    // Add socket to the global fd -> interface map
-    if (gdata.fd_to_iface.size() <= fd)
-        gdata.fd_to_iface.resize(fd + 1);
-    gdata.fd_to_iface[fd] = ifa_idx;
-
-    return fd;
+static bool all_zero(uint8_t* num, size_t len) {
+    return std::all_of(num, num + len, [](uint8_t x) { return x == 0; });
 }
 
 bool is_eth(struct ifaddrs* ifa) {
@@ -71,10 +32,6 @@ bool is_eth(struct ifaddrs* ifa) {
              ifa->ifa_name);  // TODO: test this one (should check if device is not virtual)
 
     return access(pathw, F_OK) != 0 && access(pathd, F_OK) == 0;
-}
-
-static bool all_zero(uint8_t* num, size_t len) {
-    return std::all_of(num, num + len, [](uint8_t x) { return x == 0; });
 }
 
 // TODO: split into multiple functions
@@ -140,5 +97,87 @@ int process_iface(struct ifaddrs* ifa) {
         sock_info.last_sent_ms = 0;
     }
 
+    return 0;
+}
+
+static bool is_good_iface(struct ifaddrs* ifa) {
+    int family = ifa->ifa_addr->sa_family;
+
+    if (ifa->ifa_addr == NULL || ifa->ifa_flags & IFF_LOOPBACK)
+        return false;
+    if (!is_eth(ifa) && family != AF_INET && family != AF_INET6)  // not ethernet + no ip
+        return false;
+    return true;
+}
+
+int ifaces_refresh() {
+    struct ifaddrs* ifaddr;
+    struct ifaddrs* ifa;
+
+    if (getifaddrs(&ifaddr) == -1) {
+        perror("ifaces_refresh (getifaddrs)");
+        return -1;
+    }
+
+    // Add new interfaces, update existing ones. Skip non-ethernet ones
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (!is_good_iface(ifa))
+            continue;
+
+        int err = process_iface(ifa);
+        if (err) {
+            perror("ifaces_refresh (loop)");
+            freeifaddrs(ifaddr);
+            return -1;
+        }
+    }
+
+    freeifaddrs(ifaddr);
+    return 0;
+}
+
+static void del_iface(uint8_t* ifa_name) {
+    int ifa_idx = if_nametoindex((char*)ifa_name);
+    if (ifa_idx == 0)
+        return;
+
+    // Delete info about the interface
+    gdata.idx_to_info[ifa_idx] = IfaceInfo{};
+    close_sock(ifa_idx);
+}
+
+static void process_exp_iface(struct Device& device, std::vector<int>& ifaces_todel, int ifaces_size,
+                              int64_t curr_time) {
+    /* Loop iterates in reverse order so that if_todel is descening and deleting is easier.
+    Each delete after the first one would be invalid if if_todel wouldn't be descending because
+    the position for every next element changes if one before it is deleted */
+
+    for (int i = ifaces_size - 1; i >= 0; i--) {
+        IfaceInfo iface_info = gdata.idx_to_info[device.ifaces[i]];
+        if (curr_time - iface_info.last_seen_ms > 30'000) {
+            del_iface(iface_info.iface_name);
+            ifaces_todel.push_back(i);
+        }
+    }
+}
+
+int del_exp_ifaces() {
+    int64_t curr_time = get_curr_ms();
+    if (curr_time < 0) {
+        perror("del_exp_ifaces");
+        return -1;
+    }
+
+    for (auto& [dev_id, device] : gdata.store) {
+        std::vector<int> ifaces_todel;
+
+        // Cast to interger to handle substraction below 0
+        int ifaces_size = (int)device.ifaces.size();
+        process_exp_iface(device, ifaces_todel, ifaces_size, curr_time);
+
+        std::vector<int>::iterator devices_it = device.ifaces.begin();
+        for (int i : ifaces_todel)
+            device.ifaces.erase(devices_it + i);
+    }
     return 0;
 }
