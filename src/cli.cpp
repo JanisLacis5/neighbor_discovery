@@ -22,7 +22,7 @@ void pack_buffer(char** args, int len, uint8_t* buf) {
 
 int main(int argc, char** argv) {
     // TODO: open a new socket
-    int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
 
     // TODO: process users input
     uint8_t buf[MAX_BUF_SIZE];

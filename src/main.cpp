@@ -93,7 +93,7 @@ int main() {
             int fd = events[i].data.fd;
 
             if (fd == cli_fd) {
-
+                // TODO: handle cli requests
             }
             else {
                 ssize_t recvlen;
