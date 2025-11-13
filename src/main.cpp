@@ -1,6 +1,9 @@
 #include <sys/epoll.h>
 #include <sys/random.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <cerrno>
+#include <cstring>
 #include "common.h"
 #include "frame.h"
 #include "ifaces.h"
@@ -37,6 +40,27 @@ int main() {
         return -1;
     }
 
+    // Open a listening socket for the cli
+    int cli_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
+
+    struct sockaddr_un addr;
+    char sock_path[] = "/tmp/neighbordisc/cli.sock";
+    addr.sun_family = AF_UNIX;
+    std::memcpy(addr.sun_path, sock_path, sizeof(sock_path));
+
+    err = bind(cli_fd, (struct sockaddr*)&addr, sizeof(struct sockaddr_un));
+    if (err == -1) {
+        perror("main (cli socket bind)");
+        return -1;
+    }
+
+    err = listen(cli_fd, SOMAXCONN);
+    if (err == -1) {
+        perror("main (cli socket listen)");
+        return -1;
+    }
+
+    // Create the epoll
     int epollfd = epoll_create1(0);
     if (epollfd == -1) {
         perror("main (epoll_create");
