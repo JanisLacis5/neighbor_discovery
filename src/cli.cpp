@@ -1,5 +1,8 @@
+#include <sys/socket.h>
+
 int main(int argc, char** argv) {
     // TODO: open a new socket
+    int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
 
     // TODO: process users input
 
