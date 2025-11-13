@@ -9,7 +9,7 @@ FLAGS := -std=c++23 -pedantic -Wextra -Wshadow -Wmissing-declarations
 daemon: $(DAEMON_SOURCES) 
 	g++ $(FLAGS) $(DAEMON_INLCUDES) $(DAEMON_SOURCES) -o daemon 
 
-cli: $(DAEMON_SOURCES)
+cli: $(CLI_SOURCES)
 	g++ $(FLAGS) $(CLI_SOURCES) -o cli
 
 format:
