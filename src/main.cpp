@@ -69,6 +69,10 @@ int main() {
     gdata.epollfd = epollfd;
     struct epoll_event events[MAX_EVENTS];
 
+    // Add the cli socket to the epoll
+    if (add_to_epoll(cli_fd) == -1)
+        return -1;
+
     while (true) {
         err = ifaces_refresh();
         if (err < 0)
@@ -87,21 +91,26 @@ int main() {
         for (int i = 0; i < nfds; i++) {
             uint8_t buf[1500];
             int fd = events[i].data.fd;
-            ssize_t recvlen;
 
-            while (true) {
-                recvlen = recvfrom(fd, buf, sizeof(buf), 0, NULL, 0);
+            if (fd == cli_fd) {
 
-                if (recvlen == 0)
-                    break;
-                if (recvlen == -1) {
-                    if (errno != EAGAIN && errno != EWOULDBLOCK)
-                        perror("main (reading socket)");
-                    break;
+            }
+            else {
+                ssize_t recvlen;
+                while (true) {
+                    recvlen = recvfrom(fd, buf, sizeof(buf), 0, NULL, 0);
+
+                    if (recvlen == 0)
+                        break;
+                    if (recvlen == -1) {
+                        if (errno != EAGAIN && errno != EWOULDBLOCK)
+                            perror("main (reading socket)");
+                        break;
+                    }
+
+                    int iface_idx = gdata.fd_to_iface[fd];
+                    handle_frame(iface_idx, buf, recvlen);
                 }
-
-                int iface_idx = gdata.fd_to_iface[fd];
-                handle_frame(iface_idx, buf, recvlen);
             }
         }
 

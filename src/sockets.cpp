@@ -23,7 +23,7 @@ static int bind_sock(int fd, int iface_idx) {
     return 0;
 }
 
-static int add_to_epoll(int fd) {
+int add_to_epoll(int fd) {
     struct epoll_event ev;
 
     ev.events = EPOLLIN;
@@ -31,7 +31,7 @@ static int add_to_epoll(int fd) {
 
     if (epoll_ctl(gdata.epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
         close(fd);
-        perror("open_socket (epoll_ctl)");
+        perror("add_to_epoll");
         return -1;
     }
     return 0;
