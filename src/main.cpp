@@ -38,13 +38,40 @@ static int del_exp_devices() {
     return 0;
 }
 
-void handle_cli_tokens(std::vector<std::string>& tokens) {
+int read_raw_buf(int fd) {
+    int accfd = accept4(fd, nullptr, nullptr, SOCK_NONBLOCK);
+    if (accfd == -1) {
+        perror("read_main_buf (accept)");
+        return -1;
+    }
+
+    while (true) {
+        ssize_t recvlen = recv(accfd, cli_message + cli_message_len, CLI_REQ_SIZE - cli_message_len, 0);
+
+        if (recvlen == 0)
+            return 0;
+        if (recvlen == -1) {
+            if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                perror("read_raw_buf (read)");
+                return -1;
+            }
+            return 0;
+        }
+
+        cli_message_len += recvlen;
+    }
+
+    // Cant really get here
+    return -1;
+}
+
+void handle_tokens(std::vector<std::string>& tokens) {
     for (std::string& token : tokens)
         std::cout << token << std::endl;
 }
 
 // total_len_in_bytes(4) | total_len(4) | tlen(4) | token(tlen) | tlen(4) | token(tlen) ...
-void handle_cli_req() {
+void read_tokens(std::vector<std::string>& tokens) {
     if (cli_message_len < 4)
         return;
     uint8_t* buf = cli_message;
@@ -62,7 +89,7 @@ void handle_cli_req() {
     buf += 4;
 
     // If all tokens have been received, process them
-    std::vector<std::string> tokens(tokens_cnt);
+    tokens.resize(tokens_cnt);
     for (int i = 0; i < tokens_cnt; i++) {
         uint32_t tlen;
 
@@ -74,7 +101,6 @@ void handle_cli_req() {
         buf += tlen;
     }
 
-    handle_cli_tokens(tokens);
     cli_message_len = 0;
 }
 
@@ -142,28 +168,12 @@ int main() {
 
         for (int i = 0; i < nfds; i++) {
             int fd = events[i].data.fd;
+            std::vector<std::string> tokens;
 
             if (fd == cli_fd) {
-                int accfd = accept4(cli_fd, nullptr, nullptr, SOCK_NONBLOCK);
-                if (accfd == -1) {
-                    perror("main (accept)");
-                    return -1;
-                }
-
-                while (true) {
-                    ssize_t recvlen = recv(accfd, cli_message + cli_message_len, CLI_REQ_SIZE - cli_message_len, 0);
-
-                    if (recvlen == 0)
-                        break;
-                    if (recvlen == -1) {
-                        if (errno != EAGAIN && errno != EWOULDBLOCK)
-                            perror("main (reading cli socket)");
-                        break;
-                    }
-
-                    cli_message_len += recvlen;
-                }
-                handle_cli_req();
+                read_raw_buf(fd);
+                read_tokens(tokens);
+                handle_tokens(tokens);
             }
             else {
                 uint8_t buf[1500];
