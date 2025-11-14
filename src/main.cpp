@@ -3,7 +3,10 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <cerrno>
+#include <csignal>
 #include <cstring>
+#include <iostream>
+#include <string>
 #include "common.h"
 #include "frame.h"
 #include "ifaces.h"
@@ -11,7 +14,10 @@
 #include "types.h"
 
 constexpr int MAX_EVENTS = 10;
+constexpr int CLI_REQ_SIZE = 512;
 GlobalData gdata;
+uint8_t cli_message[CLI_REQ_SIZE];
+uint32_t cli_message_len = 0;
 
 static int del_exp_devices() {
     std::vector<uint64_t> todel;
@@ -32,6 +38,46 @@ static int del_exp_devices() {
     return 0;
 }
 
+void handle_cli_tokens(std::vector<std::string>& tokens) {
+    for (std::string& token : tokens)
+        std::cout << token << std::endl;
+}
+
+// total_len_in_bytes(4) | total_len(4) | tlen(4) | token(tlen) | tlen(4) | token(tlen) ...
+void handle_cli_req() {
+    if (cli_message_len < 4)
+        return;
+    uint8_t* buf = cli_message;
+
+    // Read the length of the buffer
+    uint32_t totallen;
+    std::memcpy(&totallen, buf, 4);
+    buf += 4;
+
+    if (totallen > cli_message_len)
+        return;
+
+    uint32_t tokens_cnt;
+    std::memcpy(&tokens_cnt, buf, 4);
+    buf += 4;
+
+    // If all tokens have been received, process them
+    std::vector<std::string> tokens(tokens_cnt);
+    for (int i = 0; i < tokens_cnt; i++) {
+        uint32_t tlen;
+
+        std::memcpy(&tlen, buf, 4);
+        buf += 4;
+
+        tokens[i].resize(tlen);
+        std::memcpy(tokens[i].data(), buf, tlen);
+        buf += tlen;
+    }
+
+    handle_cli_tokens(tokens);
+    cli_message_len = 0;
+}
+
 int main() {
     // Set the device id
     int err = getrandom(&gdata.device_id, 8, GRND_RANDOM);
@@ -44,9 +90,15 @@ int main() {
     int cli_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
 
     struct sockaddr_un addr;
-    char sock_path[] = "/tmp/neighbordisc/cli.sock";
+    char sock_path[] = "/tmp/neighbordiscoverycli.sock";
     addr.sun_family = AF_UNIX;
     std::memcpy(addr.sun_path, sock_path, sizeof(sock_path));
+
+    err = unlink(sock_path);
+    if (err == -1 && errno != ENOENT) {
+        perror("main (unlink)");
+        return -1;
+    }
 
     err = bind(cli_fd, (struct sockaddr*)&addr, sizeof(struct sockaddr_un));
     if (err == -1) {
@@ -89,16 +141,34 @@ int main() {
         }
 
         for (int i = 0; i < nfds; i++) {
-            uint8_t buf[1500];
             int fd = events[i].data.fd;
 
             if (fd == cli_fd) {
-                // TODO: handle cli requests
+                int accfd = accept4(cli_fd, nullptr, nullptr, SOCK_NONBLOCK);
+                if (accfd == -1) {
+                    perror("main (accept)");
+                    return -1;
+                }
+
+                while (true) {
+                    ssize_t recvlen = recv(accfd, cli_message + cli_message_len, CLI_REQ_SIZE - cli_message_len, 0);
+
+                    if (recvlen == 0)
+                        break;
+                    if (recvlen == -1) {
+                        if (errno != EAGAIN && errno != EWOULDBLOCK)
+                            perror("main (reading cli socket)");
+                        break;
+                    }
+
+                    cli_message_len += recvlen;
+                }
+                handle_cli_req();
             }
             else {
-                ssize_t recvlen;
+                uint8_t buf[1500];
                 while (true) {
-                    recvlen = recvfrom(fd, buf, sizeof(buf), 0, NULL, 0);
+                    ssize_t recvlen = recvfrom(fd, buf, sizeof(buf), 0, NULL, 0);
 
                     if (recvlen == 0)
                         break;

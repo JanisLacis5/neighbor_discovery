@@ -1,48 +1,77 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <cstdint>
-#include <cstring>
 #include <cstdio>
+#include <cstring>
+#include <iostream>
 
-constexpr int MAX_BUF_SIZE = 500;
+constexpr int BUFSND_SIZE = 512;
+constexpr int BUFRCV_SIZE = 8192;
 
-void pack_buffer(char** args, int len, uint8_t* buf) {
+void pack_buffer(char** argv, int argc, uint8_t* buf) {
     uint8_t* bufptr = buf;
-    std::memcpy(bufptr, &len, 4);
+
+    // Calculate buffer size in bytes
+    uint32_t buflen = 4;  // argc
+    for (int i = 1; i < argc; i++) {
+        buflen += 4 + std::strlen(argv[i]);
+    }
+
+    std::memcpy(bufptr, &buflen, 4);
     bufptr += 4;
 
-    for (int i = 0; i < len; i++) {
-        uint32_t arglen = sizeof(args[i]);
+    std::memcpy(bufptr, &argc, 4);
+    bufptr += 4;
+
+    for (int i = 1; i < argc; i++) {
+        uint32_t arglen = std::strlen(argv[i]);
 
         std::memcpy(bufptr, &arglen, 4);
         bufptr += 4;
 
-        std::memcpy(bufptr, args[i], arglen);
+        std::memcpy(bufptr, argv[i], arglen);
         bufptr += arglen;
-    } 
+    }
+}
+
+void write_buf(uint8_t* buf, ssize_t len) {
+    printf("%ld\n", len);
 }
 
 int main(int argc, char** argv) {
-    // TODO: open a new socket
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+
     struct sockaddr_un addr;
-    char sock_path[] = "/tmp/neighbotdisc/cli.sock";
+    char sock_path[] = "/tmp/neighbordiscoverycli.sock";
     addr.sun_family = AF_UNIX;
     std::memcpy(addr.sun_path, sock_path, sizeof(sock_path));
 
     if (connect(fd, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1) {
-        perror("main (connect)");
+        perror("connect");
         return -1;
     }
 
-    // TODO: process users input
-    uint8_t buf[MAX_BUF_SIZE];
-    pack_buffer(argv, argc, buf);
+    uint8_t bufsnd[BUFSND_SIZE];
+    pack_buffer(argv, argc, bufsnd);
 
-    // TODO: create buffer to send to the daemon
+    ssize_t nsent = send(fd, bufsnd, BUFSND_SIZE, 0);
+    if (nsent == -1) {
+        perror("send");
+        return -1;
+    }
 
-    // TODO: send the buffer and process the response
+    uint8_t bufrcv[BUFRCV_SIZE];
+    while (true) {
+        ssize_t nrcv = recv(fd, bufrcv, BUFRCV_SIZE, 0);
+        if (nrcv == 0)
+            break;
+        if (nrcv == -1) {
+            perror("recv");
+            return -1;
+        }
 
-    // TODO: print pretty result to the stdout
+        write_buf(bufrcv, nrcv);
+    }
+
     return 0;
 }
