@@ -2,3 +2,4 @@
 cli
 daemon
 compile_commands.json
+.cache
