@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <iostream>
+#include "constants.h"
 
 constexpr int BUFSND_SIZE = 512;
 constexpr int BUFRCV_SIZE = 8192;
@@ -42,9 +42,8 @@ int main(int argc, char** argv) {
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
 
     struct sockaddr_un addr;
-    char sock_path[] = "/tmp/neighbordiscoverycli.sock";
     addr.sun_family = AF_UNIX;
-    std::memcpy(addr.sun_path, sock_path, sizeof(sock_path));
+    std::memcpy(addr.sun_path, CLI_SOCKET_PATH, sizeof(CLI_SOCKET_PATH));
 
     if (connect(fd, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == -1) {
         perror("connect");

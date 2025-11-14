@@ -1,16 +1,17 @@
-DAEMON_SOURCES := src/main.cpp \
-		   src/frame.cpp \
-		   src/ifaces.cpp \
-		   src/sockets.cpp
-DAEMON_INCLUDES := -Isrc
-CLI_SOURCES := src/cli.cpp
-FLAGS := -std=c++23 -pedantic -Wextra -Wshadow -Wmissing-declarations
+DAEMON_SOURCES := src/daemon/main.cpp \
+		   src/daemon/frame.cpp \
+		   src/daemon/ifaces.cpp \
+		   src/daemon/sockets.cpp
+CLI_SOURCES := src/cli/main.cpp
+SHARED_INCLUDES := -Isrc
+DAEMON_INCLUDES := -Isrc/daemon
+FLAGS := -std=c++23 -pedantic -Wextra -Wshadow -Wmissing-declarations -Wall
 
 daemon: $(DAEMON_SOURCES) 
-	g++ $(FLAGS) $(DAEMON_INLCUDES) $(DAEMON_SOURCES) -o daemon 
+	g++ $(FLAGS) $(SHARED_INCLUDES) $(DAEMON_INCLUDES) $(DAEMON_SOURCES) -o daemon 
 
 cli: $(CLI_SOURCES)
-	g++ $(FLAGS) $(CLI_SOURCES) -o cli
+	g++ $(FLAGS) $(SHARED_INCLUDES) $(CLI_SOURCES) -o cli
 
 format:
 	test -f .clang-format || { echo "No .clang-format file found"; exit 1; }

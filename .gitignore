@@ -1,2 +1,4 @@
 .clangd
-main
+cli
+daemon
+compile_commands.json
