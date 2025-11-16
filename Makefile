@@ -9,10 +9,10 @@ DAEMON_INCLUDES := -Isrc/daemon
 FLAGS := -std=c++23 -pedantic -Wextra -Wshadow -Wmissing-declarations -Wall
 
 daemon: $(DAEMON_SOURCES) 
-	g++ $(FLAGS) $(SHARED_INCLUDES) $(DAEMON_INCLUDES) $(DAEMON_SOURCES) -o daemon 
+	g++ $(FLAGS) -g $(SHARED_INCLUDES) $(DAEMON_INCLUDES) $(DAEMON_SOURCES) -o daemon 
 
 cli: $(CLI_SOURCES)
-	g++ $(FLAGS) $(SHARED_INCLUDES) $(CLI_SOURCES) -o cli
+	g++ $(FLAGS) -g $(SHARED_INCLUDES) $(CLI_SOURCES) -o cli
 
 format:
 	test -f .clang-format || { echo "No .clang-format file found"; exit 1; }

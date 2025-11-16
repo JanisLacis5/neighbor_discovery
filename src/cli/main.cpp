@@ -2,6 +2,7 @@
 #include <arpa/inet.h>
 #include <sys/un.h>
 #include <net/if.h>
+#include <unistd.h>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -37,17 +38,16 @@ void pack_buffer(char** argv, int argc, uint8_t* buf) {
 }
 
 void write_buf(uint8_t* buf, uint16_t len) {
-    // Read interface count in the message
-    uint32_t iface_cnt_net;
-    std::memcpy(&iface_cnt_net, buf, 4);
-    uint32_t iface_cnt = ntohl(iface_cnt_net);
+    ssize_t off = 0;
+    while (off < len) {
+        ssize_t m = write(STDOUT_FILENO, buf + off, len - off);
+        if (m < 0) return;
+        off += m;
+    }
 
-    uint32_t required_buflen = 8 + iface_cnt * (IF_NAMESIZE + 6 + 4 + 16);
-    if (required_buflen > len)
-        return;
-
-    // Process possible count
-    // Do this in a while loop (while len > requiredbuflen)
+    if (len < 0) {
+        perror("recv");
+    }
 }
 
 int main(int argc, char** argv) {
@@ -72,7 +72,6 @@ int main(int argc, char** argv) {
     }
 
     uint8_t bufrcv[BUFRCV_SIZE];
-    uint16_t used = 0;
     while (true) {
         ssize_t nrcv = recv(fd, bufrcv, BUFRCV_SIZE, 0);
         if (nrcv == 0)
@@ -82,8 +81,7 @@ int main(int argc, char** argv) {
             return -1;
         }
 
-        used += nrcv;
-        write_buf(bufrcv, used);
+        write_buf(bufrcv, nrcv);
     }
 
     return 0;
