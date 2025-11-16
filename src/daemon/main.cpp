@@ -13,6 +13,7 @@
 #include "ifaces.h"
 #include "sockets.h"
 #include "types.h"
+#include "cli_commands.h"
 
 constexpr int MAX_EVENTS = 10;
 constexpr int CLI_REQ_SIZE = 512;
@@ -68,9 +69,11 @@ int read_raw_buf(int fd) {
     return -1;
 }
 
-void handle_tokens(std::vector<std::string>& tokens) {
+void handle_tokens(int fd, std::vector<std::string>& tokens) {
     for (std::string& token : tokens)
         std::cout << token << std::endl;
+    cli_listall(fd);
+    printf("sent\n");
 }
 
 // total_len_in_bytes(4) | total_len(4) | tlen(4) | token(tlen) | tlen(4) | token(tlen) ...
@@ -175,7 +178,7 @@ int main() {
             if (fd == cli_fd) {
                 read_raw_buf(fd);
                 read_tokens(tokens);
-                handle_tokens(tokens);
+                handle_tokens(fd, tokens);
             }
             else {
                 uint8_t buf[1500];

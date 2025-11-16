@@ -1,14 +1,16 @@
+#include <sys/socket.h>
 #include <net/if.h>
 #include <cstring>
+#include <cstdio>
 #include "types.h"
 
 // Data is sent per neighbor - each send is sending everything
 // about exactly one neighboring device
-
+// TODO: optimize data streaming
 /* Data is sent in a form of ... TODO - WRITE THE FORMAT HERE ...
     If val is empty, vallen=0 is still added because for each ethernet interface there are
     the same amount of tokens.*/
-void cli_listall() {
+void cli_listall(int cli_fd) {
     // Process every neighbor, one message per neighbor
     for (auto& [devid, device] : gdata.store) {
         uint8_t buf[8192];
@@ -40,5 +42,7 @@ void cli_listall() {
         }
 
         // Send data to the cli
+        if (send(cli_fd, buf, 8132, 0) == -1)
+            perror("cli_listall");
     }
 }

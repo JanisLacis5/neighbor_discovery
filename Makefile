@@ -1,7 +1,8 @@
 DAEMON_SOURCES := src/daemon/main.cpp \
 		   src/daemon/frame.cpp \
 		   src/daemon/ifaces.cpp \
-		   src/daemon/sockets.cpp
+		   src/daemon/sockets.cpp \
+		   src/daemon/cli_commands.cpp
 CLI_SOURCES := src/cli/main.cpp
 SHARED_INCLUDES := -Isrc
 DAEMON_INCLUDES := -Isrc/daemon
