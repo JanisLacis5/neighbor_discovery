@@ -1,5 +1,7 @@
 .clangd
-cli
-daemon
+/cli
+/daemon
+!/cli/
+!/daemon/
 compile_commands.json
 .cache

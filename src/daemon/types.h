@@ -1,0 +1,61 @@
+#ifndef TYPES_H
+#define TYPES_H
+
+#include <net/if.h>
+#include <cstdint>
+#include <set>
+#include <unordered_map>
+#include <vector>
+
+#define ETH_PAYLOAD_LEN 32
+
+/* for struct Message, everything is an array of bytes to avoid endianness issues
+ as this struct is sent over the network */
+struct EthFrame {
+    // HEADER (14 bytes)
+    uint8_t dest_mac[6];
+    uint8_t source_mac[6];
+    uint16_t protocol;
+
+    // PAYLOAD (32 bytes)
+    uint8_t magic[4];      // MKTK
+    uint8_t device_id[8];  // ID of the sender
+    uint8_t ipv4[4];       // Sender's IPv4 on the interface
+    uint8_t ipv6[16];      // Sender's IPv6 on the interface
+    // ip's are set to zeroes if they do not exist
+};
+
+struct IfaceInfo {
+    bool is_init = false;  // flag tells whether info in the struct is valid
+    uint8_t iface_name[IF_NAMESIZE] = {0};
+    uint8_t mac[6];
+    uint8_t ipv4[4] = {0};
+    uint8_t ipv6[16] = {0};
+    uint64_t last_seen_ms = 0;  // timestamp when devices were connected on this specific interface
+};
+
+struct Device {
+    uint64_t last_seen_ms;  // timestamp when device was last seen on any interface
+    std::set<int> ifaces;   // set of interface indexes via 2 devices are connected
+};
+
+struct SocketInfo {
+    int fd = -1;            // file descriptor
+    uint64_t last_seen_ms;  // needed to close inactive connections
+    uint64_t last_sent_ms;  // timestamp when the last 'hello' frame was sent
+};
+
+struct GlobalData {
+    int epollfd;
+    uint8_t device_id[8];                                 // stored as byte array for easier Message building
+    std::unordered_map<uint64_t, Device> store;           // device id : device info
+    std::vector<int> fd_to_iface{10, -1};                 // tells on which interface socket with `fd` is opened
+    std::vector<IfaceInfo> idx_to_info{10, IfaceInfo{}};  // maps ifa_idx -> InterfaceInfo struct
+    std::unordered_map<uint64_t, uint8_t*> device_ids;    // maps device id in host 64-bit integer to network bit array
+
+    // interface index : socket info (socket open on interface whose idx is equal to the key)
+    std::vector<SocketInfo> sockets{10, SocketInfo{}};
+};
+extern GlobalData gdata;
+
+#endif
