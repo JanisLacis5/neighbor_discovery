@@ -1,4 +1,5 @@
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <net/if.h>
 #include <cstring>
 #include <cstdio>
@@ -21,11 +22,12 @@ void cli_listall(int cli_fd) {
         if (devid == device_id)
             continue;
 
-        std::memcpy(bufptr, gdata.device_ids[devid], 8);  // Add the neighbors id
-
         // Add interface count between the device pair is connected via
         int32_t ifaces_cnt = device.ifaces.size();
-        std::memcpy(bufptr, &ifaces_cnt, 4);
+        int32_t ifaces_cnt_net = htonl(ifaces_cnt);
+        std::memcpy(bufptr, &ifaces_cnt_net, 4);
+
+        std::memcpy(bufptr, gdata.device_ids[devid], 8);  // Add the neighbors id
 
         // Write all information about interfaces
         for (int iface_idx : device.ifaces) {
@@ -42,7 +44,7 @@ void cli_listall(int cli_fd) {
         }
 
         // Send data to the cli
-        if (send(cli_fd, buf, 8132, 0) == -1)
+        if (send(cli_fd, buf, 8192, 0) == -1)
             perror("cli_listall");
     }
 }
