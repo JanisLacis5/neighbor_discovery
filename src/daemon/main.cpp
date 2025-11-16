@@ -7,13 +7,13 @@
 #include <cstring>
 #include <iostream>
 #include <string>
+#include "cli_commands.h"
 #include "common.h"
 #include "constants.h"
 #include "frame.h"
 #include "ifaces.h"
 #include "sockets.h"
 #include "types.h"
-#include "cli_commands.h"
 
 constexpr int MAX_EVENTS = 10;
 constexpr int CLI_REQ_SIZE = 512;
@@ -42,13 +42,7 @@ static int del_exp_devices() {
     return 0;
 }
 
-int read_raw_buf(int fd) {
-    int accfd = accept4(fd, nullptr, nullptr, SOCK_NONBLOCK);
-    if (accfd == -1) {
-        perror("read_main_buf (accept)");
-        return -1;
-    }
-
+int read_raw_buf(int accfd) {
     while (true) {
         ssize_t recvlen = recv(accfd, cli_message + cli_message_len, CLI_REQ_SIZE - cli_message_len, 0);
 
@@ -176,9 +170,16 @@ int main() {
             std::vector<std::string> tokens;
 
             if (fd == cli_fd) {
-                read_raw_buf(fd);
+                int accfd = accept4(fd, nullptr, nullptr, SOCK_NONBLOCK);
+                if (accfd == -1) {
+                    perror("read_main_buf (accept)");
+                    return -1;
+                }
+
+                read_raw_buf(accfd);
                 read_tokens(tokens);
-                handle_tokens(fd, tokens);
+                handle_tokens(accfd, tokens);
+                close(accfd);
             }
             else {
                 uint8_t buf[1500];

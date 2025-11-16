@@ -1,7 +1,7 @@
-#include <sys/socket.h>
 #include <arpa/inet.h>
-#include <sys/un.h>
 #include <net/if.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include <cstdint>
 #include <cstdio>
@@ -41,7 +41,8 @@ void write_buf(uint8_t* buf, uint16_t len) {
     ssize_t off = 0;
     while (off < len) {
         ssize_t m = write(STDOUT_FILENO, buf + off, len - off);
-        if (m < 0) return;
+        if (m < 0)
+            return;
         off += m;
     }
 
@@ -83,6 +84,7 @@ int main(int argc, char** argv) {
 
         write_buf(bufrcv, nrcv);
     }
+    close(fd);
 
     return 0;
 }

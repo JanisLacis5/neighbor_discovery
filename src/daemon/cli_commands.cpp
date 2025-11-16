@@ -1,8 +1,8 @@
-#include <sys/socket.h>
 #include <arpa/inet.h>
 #include <net/if.h>
-#include <cstring>
+#include <sys/socket.h>
 #include <cstdio>
+#include <cstring>
 #include "types.h"
 
 bool all_zeroes(uint8_t buf[], uint8_t len) {
@@ -22,6 +22,14 @@ bool all_zeroes(uint8_t buf[], uint8_t len) {
 void cli_listall(int cli_fd) {
     // Process every neighbor, one message per neighbor
     // TODO: send message only with a full buffer
+    if (gdata.store.empty()) {
+        char buf[] = "No neighbors found\n";
+        if (send(cli_fd, buf, sizeof(buf), 0) == -1)
+            perror("cli_listall (empty)");
+
+        return;
+    }
+
     for (auto& [devid, device] : gdata.store) {
         if (std::memcmp(gdata.device_id, gdata.device_ids[devid], 8) == 0)
             continue;
@@ -29,12 +37,9 @@ void cli_listall(int cli_fd) {
         char buf[8194];
         char* bufptr = buf;
 
-        // Device id as hex
         const uint8_t* id_bytes = gdata.device_ids[devid];
-        std::sprintf(bufptr, "%02x%02x%02x%02x%02x%02x%02x%02x\n",
-            id_bytes[0], id_bytes[1], id_bytes[2], id_bytes[3],
-            id_bytes[4], id_bytes[5], id_bytes[6], id_bytes[7]
-        );
+        std::sprintf(bufptr, "%02x%02x%02x%02x%02x%02x%02x%02x\n", id_bytes[0], id_bytes[1], id_bytes[2], id_bytes[3],
+                     id_bytes[4], id_bytes[5], id_bytes[6], id_bytes[7]);
         bufptr += 8;
 
         for (int iface_idx : device.ifaces) {
@@ -43,44 +48,37 @@ void cli_listall(int cli_fd) {
             int n = std::sprintf(bufptr, "\t%s\n", iface_info.iface_name);
             bufptr += n;
 
-            // MAC
             const uint8_t* m = iface_info.mac;
-            std::sprintf(bufptr, "\tMAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
-                m[0], m[1], m[2], m[3], m[4], m[5]
-            );
+            std::sprintf(bufptr, "\tMAC: %02x:%02x:%02x:%02x:%02x:%02x\n", m[0], m[1], m[2], m[3], m[4], m[5]);
             bufptr += 6;
 
-            if (all_zeroes(iface_info.ipv4, 4)) {
+            if (all_zeroes(iface_info.ipv4, 4))
                 n = std::sprintf(bufptr, "\tIPv4: NONE\n");
-            } else {
+            else {
                 const uint8_t* ip4 = iface_info.ipv4;
-                n = std::sprintf(bufptr, "\tIPv4: %u.%u.%u.%u\n",
-                    ip4[0], ip4[1], ip4[2], ip4[3]
-                );
+                n = std::sprintf(bufptr, "\tIPv4: %u.%u.%u.%u\n", ip4[0], ip4[1], ip4[2], ip4[3]);
             }
             bufptr += n;
 
-            if (all_zeroes(iface_info.ipv6, 16)) {
+            if (all_zeroes(iface_info.ipv6, 16))
                 n = std::sprintf(bufptr, "\tIPv6: NONE\n");
-            } else {
+            else {
                 const uint8_t* ip6 = iface_info.ipv6;
                 n = std::sprintf(bufptr, "\tIPv6: ");
                 bufptr += n;
 
                 for (int i = 0; i < 16; i += 2) {
-                    int m = std::sprintf(bufptr, "%02x%02x%s",
-                        ip6[i], ip6[i+1], (i < 14 ? ":" : "\n")
-                    );
+                    int m = std::sprintf(bufptr, "%02x%02x%s", ip6[i], ip6[i + 1], (i < 14 ? ":" : "\n"));
                     bufptr += m;
                 }
             }
         }
 
         size_t len = bufptr - buf;
-        if (len == 0) continue;
+        if (len == 0)
+            continue;
 
-        if (send(cli_fd, buf, len, 0) == -1) {
+        if (send(cli_fd, buf, len, 0) == -1)
             perror("cli_listall");
-        }
     }
 }
