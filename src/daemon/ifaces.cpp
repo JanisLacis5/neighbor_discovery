@@ -32,7 +32,7 @@ static int update_iface_info(struct ifaddrs* ifa) {
     int family = ifa->ifa_addr->sa_family;
 
     int ifa_idx = if_nametoindex(ifa->ifa_name);
-    if (ifa_idx == 0) {
+    if (ifa_idx <= 0) {
         perror("update_iface_info");
         return -1;
     }
@@ -75,6 +75,11 @@ bool is_eth(struct ifaddrs* ifa) {
 
 int process_iface(struct ifaddrs* ifa) {
     int ifa_idx = if_nametoindex(ifa->ifa_name);
+    if (ifa_idx <= 0) {
+        perror("proccess_iface (if_nametoindex)");
+        return -1;
+    }
+
     int64_t curr_time = get_curr_ms();
 
     // Update interface info

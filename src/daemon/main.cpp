@@ -5,7 +5,6 @@
 #include <cerrno>
 #include <csignal>
 #include <cstring>
-#include <iostream>
 #include <string>
 #include "cli_commands.h"
 #include "common.h"
@@ -20,6 +19,12 @@ constexpr int CLI_REQ_SIZE = 512;
 GlobalData gdata;
 uint8_t cli_message[CLI_REQ_SIZE];
 uint32_t cli_message_len = 0;
+
+/*
+    TODOs:
+        - Remove 'magic' numbers, replace with constexpr's
+        - Clear TODO's in other files
+*/
 
 static int del_exp_devices() {
     std::vector<uint64_t> todel;
@@ -64,10 +69,8 @@ int read_raw_buf(int accfd) {
 }
 
 void handle_tokens(int fd, std::vector<std::string>& tokens) {
-    for (std::string& token : tokens)
-        std::cout << token << std::endl;
-    cli_listall(fd);
-    printf("sent\n");
+    if (tokens[0] == "list")
+        cli_listall(fd);
 }
 
 // total_len_in_bytes(4) | total_len(4) | tlen(4) | token(tlen) | tlen(4) | token(tlen) ...
@@ -182,7 +185,7 @@ int main() {
                 close(accfd);
             }
             else {
-                uint8_t buf[1500];
+                uint8_t buf[8194];
                 while (true) {
                     ssize_t recvlen = recvfrom(fd, buf, sizeof(buf), 0, NULL, 0);
 
@@ -201,7 +204,7 @@ int main() {
         }
 
         int64_t curr_time = get_curr_ms();
-        for (int idx = 1; idx < gdata.sockets.size(); idx++) {
+        for (size_t idx = 1; idx < gdata.sockets.size(); idx++) {
             SocketInfo& sock_info = gdata.sockets[idx];
             const IfaceInfo& iface_info = gdata.idx_to_info[idx];
 

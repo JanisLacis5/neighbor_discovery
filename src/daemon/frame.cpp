@@ -5,6 +5,7 @@
 #include <netpacket/packet.h>
 #include <cstring>
 #include "common.h"
+#include "types.h"
 
 static int unpack_frame(uint8_t* buf, ssize_t len, EthFrame* dest) {
     if (len < ETH_HLEN + ETH_PAYLOAD_LEN)

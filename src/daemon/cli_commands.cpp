@@ -68,8 +68,8 @@ void cli_listall(int cli_fd) {
                 bufptr += n;
 
                 for (int i = 0; i < 16; i += 2) {
-                    int m = std::sprintf(bufptr, "%02x%02x%s", ip6[i], ip6[i + 1], (i < 14 ? ":" : "\n"));
-                    bufptr += m;
+                    int tmp = std::sprintf(bufptr, "%02x%02x%s", ip6[i], ip6[i + 1], (i < 14 ? ":" : "\n"));
+                    bufptr += tmp;
                 }
             }
         }
