@@ -38,33 +38,33 @@ void cli_listall(int cli_fd) {
         char* bufptr = buf;
 
         const uint8_t* id_bytes = gdata.device_ids[devid];
-        std::sprintf(bufptr, "%02x%02x%02x%02x%02x%02x%02x%02x\n", id_bytes[0], id_bytes[1], id_bytes[2], id_bytes[3],
+        int n = std::sprintf(bufptr, "%02x%02x%02x%02x%02x%02x%02x%02x\n", id_bytes[0], id_bytes[1], id_bytes[2], id_bytes[3],
                      id_bytes[4], id_bytes[5], id_bytes[6], id_bytes[7]);
-        bufptr += 8;
+        bufptr += n;
 
         for (int iface_idx : device.ifaces) {
             IfaceInfo& iface_info = gdata.idx_to_info[iface_idx];
 
-            int n = std::sprintf(bufptr, "\t%s\n", iface_info.iface_name);
+            n = std::sprintf(bufptr, "\t%s\n", iface_info.iface_name);
             bufptr += n;
 
             const uint8_t* m = iface_info.mac;
-            std::sprintf(bufptr, "\tMAC: %02x:%02x:%02x:%02x:%02x:%02x\n", m[0], m[1], m[2], m[3], m[4], m[5]);
-            bufptr += 6;
+            n = std::sprintf(bufptr, "\t\tMAC: %02x:%02x:%02x:%02x:%02x:%02x\n", m[0], m[1], m[2], m[3], m[4], m[5]);
+            bufptr += n;
 
             if (all_zeroes(iface_info.ipv4, 4))
-                n = std::sprintf(bufptr, "\tIPv4: NONE\n");
+                n = std::sprintf(bufptr, "\t\tIPv4: NONE\n");
             else {
                 const uint8_t* ip4 = iface_info.ipv4;
-                n = std::sprintf(bufptr, "\tIPv4: %u.%u.%u.%u\n", ip4[0], ip4[1], ip4[2], ip4[3]);
+                n = std::sprintf(bufptr, "\t\tIPv4: %u.%u.%u.%u\n", ip4[0], ip4[1], ip4[2], ip4[3]);
             }
             bufptr += n;
 
             if (all_zeroes(iface_info.ipv6, 16))
-                n = std::sprintf(bufptr, "\tIPv6: NONE\n");
+                n = std::sprintf(bufptr, "\t\tIPv6: NONE\n");
             else {
                 const uint8_t* ip6 = iface_info.ipv6;
-                n = std::sprintf(bufptr, "\tIPv6: ");
+                n = std::sprintf(bufptr, "\t\tIPv6: ");
                 bufptr += n;
 
                 for (int i = 0; i < 16; i += 2) {

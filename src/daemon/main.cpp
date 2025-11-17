@@ -24,6 +24,7 @@ uint32_t cli_message_len = 0;
     TODOs:
         - Remove 'magic' numbers, replace with constexpr's
         - Clear TODO's in other files
+        - Send responses from daemon in binary
 */
 
 static int del_exp_devices() {
@@ -93,7 +94,7 @@ void read_tokens(std::vector<std::string>& tokens) {
 
     // If all tokens have been received, process them
     tokens.resize(tokens_cnt);
-    for (int i = 0; i < tokens_cnt; i++) {
+    for (uint32_t i = 0; i < tokens_cnt; i++) {
         uint32_t tlen;
 
         std::memcpy(&tlen, buf, 4);
