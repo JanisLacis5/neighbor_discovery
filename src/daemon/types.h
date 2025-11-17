@@ -52,7 +52,7 @@ struct SocketInfo {
 
 struct GlobalData {
     int epollfd;
-    uint8_t device_id[8];                                 // stored as byte array for easier Message building
+    uint64_t device_id; // In host order (to send over the network, htonll)
     std::unordered_map<uint64_t, Device> store;           // device id : device info
     std::vector<int> fd_to_iface{10, -1};                 // tells on which interface socket with `fd` is opened
     std::vector<IfaceInfo> idx_to_info{10, IfaceInfo{}};  // maps ifa_idx -> InterfaceInfo struct

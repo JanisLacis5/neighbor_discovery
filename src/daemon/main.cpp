@@ -108,11 +108,13 @@ void read_tokens(std::vector<std::string>& tokens) {
 
 int main() {
     // Set the device id
-    int err = getrandom(&gdata.device_id, 8, GRND_RANDOM);
+    uint8_t tmp[8];
+    int err = getrandom(tmp, 8, GRND_RANDOM);
     if (err <= 0) {
         perror("main (random num generation)");
         return -1;
     }
+    std::memcpy(&gdata.device_id, tmp, 8);
 
     // Open a listening socket for the cli
     int cli_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);

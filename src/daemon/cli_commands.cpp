@@ -32,19 +32,13 @@ void cli_listall(int cli_fd) {
     }
 
     for (auto& [devid, device] : gdata.store) {
-        uint64_t devid_netorder = htonll(devid);
-        uint8_t id_bytes[8];
-        for (int i = 0; i < 8; i++)
-            id_bytes[i] = (devid_netorder >> (8 - i)) & 1;
-
-        if (std::memcmp(id_bytes, gdata.device_id, 8) == 0)
+        if (devid == gdata.device_id)
             continue;
 
         char buf[8194];
         char* bufptr = buf;
 
-        int n = std::sprintf(bufptr, "%02x%02x%02x%02x%02x%02x%02x%02x\n", id_bytes[0], id_bytes[1], id_bytes[2], id_bytes[3],
-                     id_bytes[4], id_bytes[5], id_bytes[6], id_bytes[7]);
+        int n = std::sprintf(bufptr, "%ld", devid);
         bufptr += n;
 
         for (auto& [iface_idx, iface_info]: device.ifaces) {

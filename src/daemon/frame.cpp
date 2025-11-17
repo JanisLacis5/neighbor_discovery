@@ -37,7 +37,9 @@ static void create_frame(const uint8_t* ipv4, const uint8_t* ipv6, const uint8_t
 
     // Set the payload
     std::memcpy(dest->magic, "MKTK", 4);
-    std::memcpy(dest->device_id, gdata.device_id, 8);
+
+    uint64_t devid_netw = htonll(gdata.device_id);
+    std::memcpy(dest->device_id, &devid_netw, 8);
 
     if (!ipv4)
         std::memset(dest->ipv4, 0, 4);
@@ -63,7 +65,7 @@ void handle_frame(int iface_idx, uint8_t* buf, ssize_t len) {
     std::memcpy(&sender_device_id, frame.device_id, 8);
     sender_device_id = ntohll(sender_device_id);
 
-    if (std::memcmp(frame.device_id, gdata.device_id, 8) == 0)
+    if (sender_device_id == gdata.device_id)
         return;
 
     Device& device = gdata.store[sender_device_id];
