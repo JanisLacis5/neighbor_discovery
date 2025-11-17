@@ -47,10 +47,15 @@ void cli_listall(int cli_fd) {
                      id_bytes[4], id_bytes[5], id_bytes[6], id_bytes[7]);
         bufptr += n;
 
-        for (int iface_idx : device.ifaces) {
-            IfaceInfo& iface_info = gdata.idx_to_info[iface_idx];
+        for (auto& [iface_idx, iface_info]: device.ifaces) {
+            char iface_name[IF_NAMESIZE];
+            char* res = if_indextoname(iface_idx, iface_name);
+            if (res != iface_name) {
+                perror("cli_listall (if_indextoname)");
+                return;
+            }
 
-            n = std::sprintf(bufptr, "\t%s\n", iface_info.iface_name);
+            n = std::sprintf(bufptr, "\t%s\n", iface_name);
             bufptr += n;
 
             const uint8_t* m = iface_info.mac;

@@ -66,8 +66,13 @@ void handle_frame(int iface_idx, uint8_t* buf, ssize_t len) {
     if (std::memcmp(frame.device_id, gdata.device_id, 8) == 0)
         return;
 
-    gdata.store[sender_device_id].last_seen_ms = curr_time;
-    gdata.store[sender_device_id].ifaces.insert(iface_idx);
+    Device& device = gdata.store[sender_device_id];
+    device.last_seen_ms = curr_time;
+    
+    IfaceInfoShort& iface = device.ifaces[iface_idx];
+    std::memcpy(iface.mac, frame.source_mac, 6);
+    std::memcpy(iface.ipv4, frame.ipv4, 4);
+    std::memcpy(iface.ipv6, frame.ipv6, 16);
 
     // DEBUG
     printf("received frame from %ld, its mac address is ", sender_device_id);

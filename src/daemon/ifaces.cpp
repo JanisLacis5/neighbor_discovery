@@ -41,7 +41,6 @@ static int update_iface_info(struct ifaddrs* ifa) {
         gdata.idx_to_info.resize(ifa_idx + 1);
 
     struct IfaceInfo& iface_info = gdata.idx_to_info[ifa_idx];
-    iface_info.last_seen_ms = curr_time;
 
     if (family == AF_PACKET && !iface_info.is_init)
         fill_info_raw(ifa, iface_info);
@@ -144,19 +143,10 @@ int ifaces_refresh() {
     return 0;
 }
 
-static void del_iface(int iface_idx) {
-    gdata.idx_to_info[iface_idx] = IfaceInfo{};
-    close_sock(iface_idx);
-}
-
 static void process_exp_iface(struct Device& device, std::vector<int>& ifaces_todel, int64_t curr_time) {
-    for (int iface_idx : device.ifaces) {
-        const IfaceInfo& iface_info = gdata.idx_to_info[iface_idx];
-
-        if (curr_time - iface_info.last_seen_ms > 30'000) {
-            del_iface(iface_idx);
+    for (auto [iface_idx, iface_info]: device.ifaces) {
+        if (curr_time - iface_info.last_seen_ms > 30'000)
             ifaces_todel.push_back(iface_idx);
-        }
     }
 }
 
