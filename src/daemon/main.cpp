@@ -44,7 +44,7 @@ static int del_exp_devices() {
     return 0;
 }
 
-int read_full(int accfd, uint8_t* buf, size_t len) {
+int read_full(int accfd, uint8_t* buf, size_t& len) {
     // Read the first 4 bytes to figure out the length of the message
     while (len < 4) {
         ssize_t recvlen = recv(accfd, buf + len, 4 - len, 0);
