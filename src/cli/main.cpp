@@ -23,7 +23,8 @@ void pack_buf(char** argv, int argc, uint8_t* buf) {
     std::memcpy(bufptr, &buflen, 4);
     bufptr += 4;
 
-    std::memcpy(bufptr, &argc, 4);
+    uint32_t token_cnt = argc - 1;
+    std::memcpy(bufptr, &token_cnt, 4);
     bufptr += 4;
 
     for (int i = 1; i < argc; i++) {

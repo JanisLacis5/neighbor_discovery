@@ -26,7 +26,7 @@ inline int64_t get_curr_ms() {
 }
 
 inline uint64_t ntohll(uint64_t n) {
-    if (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) 
+    if (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
         return __builtin_bswap64(n);
     return n;
 }

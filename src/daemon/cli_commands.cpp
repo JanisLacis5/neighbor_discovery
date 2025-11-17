@@ -40,7 +40,7 @@ void cli_listall(int cli_fd) {
         int n = std::sprintf(bufptr, "%ld", devid);
         bufptr += n;
 
-        for (auto& [iface_idx, iface_info]: device.ifaces) {
+        for (auto& [iface_idx, iface_info] : device.ifaces) {
             char iface_name[IF_NAMESIZE];
             char* res = if_indextoname(iface_idx, iface_name);
             if (res != iface_name) {

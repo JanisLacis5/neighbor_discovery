@@ -80,7 +80,7 @@ int read_full(int accfd, uint8_t* buf, size_t& len) {
 }
 
 void handle_tokens(int fd, std::vector<std::string>& tokens) {
-    if (tokens.size() == 0) 
+    if (tokens.size() == 0)
         printf("No tokens received from cli\n");
     else if (tokens[0] == "list")
         cli_listall(fd);

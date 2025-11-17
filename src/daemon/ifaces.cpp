@@ -144,7 +144,7 @@ int ifaces_refresh() {
 }
 
 static void process_exp_iface(struct Device& device, std::vector<int>& ifaces_todel, int64_t curr_time) {
-    for (auto [iface_idx, iface_info]: device.ifaces) {
+    for (auto [iface_idx, iface_info] : device.ifaces) {
         if (curr_time - iface_info.last_seen_ms > 30'000)
             ifaces_todel.push_back(iface_idx);
     }
