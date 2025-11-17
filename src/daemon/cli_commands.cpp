@@ -4,7 +4,6 @@
 #include <cstdio>
 #include <cstring>
 #include "types.h"
-#include "common.h"
 
 bool all_zeroes(uint8_t buf[], uint8_t len) {
     for (int i = 0; i < len; i++) {

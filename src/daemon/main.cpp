@@ -17,8 +17,6 @@
 constexpr int MAX_EVENTS = 10;
 constexpr int CLI_REQ_SIZE = 512;
 GlobalData gdata;
-uint8_t cli_message[CLI_REQ_SIZE];
-uint32_t cli_message_len = 0;
 
 /*
     TODOs:
@@ -46,44 +44,59 @@ static int del_exp_devices() {
     return 0;
 }
 
-int read_raw_buf(int accfd) {
-    while (true) {
-        ssize_t recvlen = recv(accfd, cli_message + cli_message_len, CLI_REQ_SIZE - cli_message_len, 0);
-
-        if (recvlen == 0)
-            return 0;
-        if (recvlen == -1) {
-            if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                perror("read_raw_buf (read)");
-                return -1;
-            }
-            return 0;
+int read_full(int accfd, uint8_t* buf, size_t len) {
+    // Read the first 4 bytes to figure out the length of the message
+    while (len < 4) {
+        ssize_t recvlen = recv(accfd, buf + len, 4 - len, 0);
+        if (recvlen <= 0) {
+            perror("read_full");
+            return -1;
         }
 
-        cli_message_len += recvlen;
+        len += recvlen;
     }
 
-    // Cant (definetly shouldnt) really get here
-    return -1;
+    // Read the total length
+    size_t total_len;
+    std::memcpy(&total_len, buf, 4);
+
+    // Read the rest of the message
+    while (len < total_len) {
+        ssize_t recvlen = recv(accfd, buf + len, total_len - len, 0);
+        if (recvlen <= 0) {
+            perror("read_full1");
+            return -1;
+        }
+
+        len += recvlen;
+    }
+
+    if (total_len != len) {
+        perror("read_full2");
+        return -1;
+    }
+
+    return 0;
 }
 
 void handle_tokens(int fd, std::vector<std::string>& tokens) {
-    if (tokens[0] == "list")
+    if (tokens.size() == 0) 
+        printf("No tokens received from cli\n");
+    else if (tokens[0] == "list")
         cli_listall(fd);
 }
 
 // total_len_in_bytes(4) | total_len(4) | tlen(4) | token(tlen) | tlen(4) | token(tlen) ...
-void read_tokens(std::vector<std::string>& tokens) {
-    if (cli_message_len < 4)
+void read_tokens(uint8_t* buf, size_t len, std::vector<std::string>& tokens) {
+    if (len < 4)
         return;
-    uint8_t* buf = cli_message;
 
     // Read the length of the buffer
     uint32_t totallen;
     std::memcpy(&totallen, buf, 4);
     buf += 4;
 
-    if (totallen > cli_message_len)
+    if (totallen != len)
         return;
 
     uint32_t tokens_cnt;
@@ -102,8 +115,6 @@ void read_tokens(std::vector<std::string>& tokens) {
         std::memcpy(tokens[i].data(), buf, tlen);
         buf += tlen;
     }
-
-    cli_message_len = 0;
 }
 
 int main() {
@@ -171,17 +182,23 @@ int main() {
 
         for (int i = 0; i < nfds; i++) {
             int fd = events[i].data.fd;
-            std::vector<std::string> tokens;
 
             if (fd == cli_fd) {
-                int accfd = accept4(fd, nullptr, nullptr, SOCK_NONBLOCK);
+                std::vector<std::string> tokens;
+                uint8_t buf[CLI_REQ_SIZE];
+                size_t len = 0;
+
+                int accfd = accept(fd, nullptr, nullptr);
                 if (accfd == -1) {
                     perror("read_main_buf (accept)");
                     return -1;
                 }
 
-                read_raw_buf(accfd);
-                read_tokens(tokens);
+                if (read_full(accfd, buf, len) == -1) {
+                    perror("read_main_buf (read_raw_buf)");
+                    return -1;
+                }
+                read_tokens(buf, len, tokens);
                 handle_tokens(accfd, tokens);
                 close(accfd);
             }
