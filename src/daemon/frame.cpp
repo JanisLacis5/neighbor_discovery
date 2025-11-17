@@ -60,12 +60,10 @@ void handle_frame(int iface_idx, uint8_t* buf, ssize_t len) {
         return;
 
     uint64_t sender_device_id;
-    uint64_t my_device_id;
     std::memcpy(&sender_device_id, frame.device_id, 8);
-    std::memcpy(&my_device_id, gdata.device_id, 8);
-    gdata.device_ids[sender_device_id] = frame.device_id;
+    sender_device_id = ntohll(sender_device_id);
 
-    if (sender_device_id == my_device_id)
+    if (std::memcmp(frame.device_id, gdata.device_id, 8) == 0)
         return;
 
     gdata.store[sender_device_id].last_seen_ms = curr_time;

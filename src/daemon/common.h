@@ -25,4 +25,16 @@ inline int64_t get_curr_ms() {
     return tp.tv_sec * 1000 + tp.tv_nsec / 1000 / 1000;
 }
 
+inline uint64_t ntohll(uint64_t n) {
+    if (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) 
+        return __builtin_bswap64(n);
+    return n;
+}
+
+inline uint64_t htonll(uint64_t n) {
+    if (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+        return __builtin_bswap64(n);
+    return n;
+}
+
 #endif

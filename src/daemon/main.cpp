@@ -41,10 +41,8 @@ static int del_exp_devices() {
         }
     }
 
-    for (uint64_t id : todel) {
+    for (uint64_t id : todel)
         gdata.store.erase(id);
-        gdata.device_ids.erase(id);
-    }
     return 0;
 }
 

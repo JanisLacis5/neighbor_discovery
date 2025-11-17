@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include "types.h"
+#include "common.h"
 
 bool all_zeroes(uint8_t buf[], uint8_t len) {
     for (int i = 0; i < len; i++) {
@@ -31,13 +32,17 @@ void cli_listall(int cli_fd) {
     }
 
     for (auto& [devid, device] : gdata.store) {
-        if (std::memcmp(gdata.device_id, gdata.device_ids[devid], 8) == 0)
+        uint64_t devid_netorder = htonll(devid);
+        uint8_t id_bytes[8];
+        for (int i = 0; i < 8; i++)
+            id_bytes[i] = (devid_netorder >> (8 - i)) & 1;
+
+        if (std::memcmp(id_bytes, gdata.device_id, 8) == 0)
             continue;
 
         char buf[8194];
         char* bufptr = buf;
 
-        const uint8_t* id_bytes = gdata.device_ids[devid];
         int n = std::sprintf(bufptr, "%02x%02x%02x%02x%02x%02x%02x%02x\n", id_bytes[0], id_bytes[1], id_bytes[2], id_bytes[3],
                      id_bytes[4], id_bytes[5], id_bytes[6], id_bytes[7]);
         bufptr += n;
@@ -68,14 +73,14 @@ void cli_listall(int cli_fd) {
                 bufptr += n;
 
                 for (int i = 0; i < 16; i += 2) {
-                    int tmp = std::sprintf(bufptr, "%02x%02x%s", ip6[i], ip6[i + 1], (i < 14 ? ":" : "\n"));
-                    bufptr += tmp;
+                    n = std::sprintf(bufptr, "%02x%02x%s", ip6[i], ip6[i + 1], (i < 14 ? ":" : "\n"));
+                    bufptr += n;
                 }
             }
         }
 
-        size_t len = bufptr - buf;
-        if (len == 0)
+        ssize_t len = bufptr - buf;
+        if (len <= 0)
             continue;
 
         if (send(cli_fd, buf, len, 0) == -1)
