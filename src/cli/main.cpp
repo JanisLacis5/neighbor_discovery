@@ -11,16 +11,16 @@
 constexpr int BUFSND_SIZE = 512;
 constexpr int BUFRCV_SIZE = 8192;
 
-void pack_buf(char** argv, int argc, uint8_t* buf) {
+void pack_buf(char** argv, int argc, uint8_t* buf, size_t& len) {
     uint8_t* bufptr = buf;
 
     // Calculate buffer size in bytes
-    uint32_t buflen = 4;  // argc
+    len = 8;  // totallen + argc
     for (int i = 1; i < argc; i++) {
-        buflen += 4 + std::strlen(argv[i]);
+        len += 4 + std::strlen(argv[i]);
     }
 
-    std::memcpy(bufptr, &buflen, 4);
+    std::memcpy(bufptr, &len, 4);
     bufptr += 4;
 
     uint32_t token_cnt = argc - 1;
@@ -64,9 +64,10 @@ int main(int argc, char** argv) {
     }
 
     uint8_t bufsnd[BUFSND_SIZE];
-    pack_buf(argv, argc, bufsnd);
+    size_t buflen = 0;
+    pack_buf(argv, argc, bufsnd, buflen);
 
-    ssize_t nsent = send(fd, bufsnd, BUFSND_SIZE, 0);
+    ssize_t nsent = send(fd, bufsnd, buflen, 0);
     if (nsent == -1) {
         perror("send");
         return -1;
