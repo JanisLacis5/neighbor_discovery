@@ -56,10 +56,7 @@ void handle_frame(int iface_idx, uint8_t* buf, ssize_t len) {
 
     int64_t curr_time = get_curr_ms();
 
-    std::string sender_device_id;
-    sender_device_id.reserve(DEVICE_ID_LEN);
-    std::memcpy(sender_device_id.data(), frame.device_id, DEVICE_ID_LEN);
-
+    std::string sender_device_id((char*)frame.device_id, DEVICE_ID_LEN);
     if (sender_device_id == gdata.device_id)
         return;
 
