@@ -38,7 +38,7 @@ static int send_mes(int fd, char* buf, size_t& len) {
     while (sent < len) {
         ssize_t n = send(fd, buf + sent, len - sent, 0);
 
-        if (sent < 0) {
+        if (n < 0) {
             if (errno == EINTR)
                 continue;
             perror("send_mes");
@@ -54,7 +54,7 @@ static int send_mes(int fd, char* buf, size_t& len) {
     return 0;
 }
 
-static int checkn(int n, char* buf, size_t pos, int fd, const char* func_name) {
+static int checkn(int n, char* buf, size_t& pos, int fd, const char* func_name) {
     if (n < 0 || n > BUF_SIZE) {
         perror(func_name);
         return -1;
@@ -100,7 +100,7 @@ static int add_iface_name(int iface_idx, char* buf, size_t& pos, int fd) {
     return 0;
 }
 
-static int add_mac(uint8_t* mac, char* buf, size_t& pos, int fd) {
+static int add_mac(const uint8_t* mac, char* buf, size_t& pos, int fd) {
     char line[TMP_LINE_SIZE];
 
     const uint8_t* m = mac;
@@ -114,7 +114,7 @@ static int add_mac(uint8_t* mac, char* buf, size_t& pos, int fd) {
     return 0;
 }
 
-static int add_ip(sa_family_t family, uint8_t* ip, char* buf, size_t& pos, int fd) {
+static int add_ip(sa_family_t family, const uint8_t* ip, char* buf, size_t& pos, int fd) {
     char line[TMP_LINE_SIZE];
     int n;
 
@@ -185,7 +185,7 @@ void cli_listall(int fd) {
     }
 
     if (pos != 0) {
-        if (send(fd, buf, pos, 0) == -1)
+        if (send_mes(fd, buf, pos) == -1)
             perror("cli_listall");
     }
 }
