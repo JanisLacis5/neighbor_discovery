@@ -1,8 +1,6 @@
 #include <sys/epoll.h>
 #include <sys/random.h>
-#include <sys/socket.h>
 #include <sys/un.h>
-#include <cerrno>
 #include <csignal>
 #include <cstring>
 #include <string>

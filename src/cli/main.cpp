@@ -1,5 +1,3 @@
-#include <arpa/inet.h>
-#include <net/if.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>

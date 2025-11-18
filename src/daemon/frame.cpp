@@ -1,9 +1,7 @@
 #include "frame.h"
-#include <linux/if_ether.h>
 #include <net/ethernet.h>
 #include <netinet/in.h>
 #include <netpacket/packet.h>
-#include <cinttypes>
 #include <cstring>
 #include "common.h"
 #include "types.h"
