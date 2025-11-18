@@ -1,4 +1,5 @@
 #include <sys/epoll.h>
+#include <sys/stat.h>
 #include <sys/random.h>
 #include <sys/un.h>
 #include <csignal>
@@ -57,6 +58,9 @@ int main() {
         perror("main (cli socket bind)");
         return -1;
     }
+
+    // Allow everyone to connect
+    chmod(CLI_SOCKET_PATH, 0666);
 
     err = listen(cli_fd, SOMAXCONN);
     if (err == -1) {
