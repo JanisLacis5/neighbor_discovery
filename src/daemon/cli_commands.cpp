@@ -3,15 +3,30 @@
 #include <sys/socket.h>
 #include <cstdio>
 #include <cstring>
-#include <cinttypes>
 #include "types.h"
 
-bool all_zeroes(uint8_t buf[], uint8_t len) {
+static const char alphabet[] = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+static bool all_zeroes(uint8_t buf[], uint8_t len) {
     for (int i = 0; i < len; i++) {
         if (buf[i] != 0)
             return false;
     }
     return true;
+}
+
+static void format_devid(uint64_t n, char out[27]) {
+    char tmp[16];
+    int i = 0;
+
+    while (i < 13) {
+        tmp[12 - i] = alphabet[n & 0x1F];
+        n >>= 5;
+        i++;
+    }
+
+    // Optional grouping: 4-4-4-1
+    snprintf(out, 27, "%.4s-%.4s-%.4s-%c", tmp, tmp + 4, tmp + 8, tmp[12]);
 }
 
 // Data is sent per neighbor - each send is sending everything
@@ -38,7 +53,9 @@ void cli_listall(int cli_fd) {
         char buf[8194];
         char* bufptr = buf;
 
-        int n = std::sprintf(bufptr, "%" PRIu64 "\n", devid);
+        char idstr[27];
+        format_devid(devid, idstr);
+        int n = std::sprintf(bufptr, "DEVICE ID: %s\n", idstr);
         bufptr += n;
 
         for (auto& [iface_idx, iface_info] : device.ifaces) {
