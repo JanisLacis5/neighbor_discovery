@@ -7,7 +7,6 @@
 
 constexpr size_t BUF_SIZE = 8192;  // 8kb
 constexpr size_t TMP_LINE_SIZE = 256;
-static const char alphabet[] = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 static bool all_zeroes(const uint8_t* buf, size_t len) {
     for (size_t i = 0; i < len; i++) {
@@ -52,7 +51,7 @@ static int checkn(int n, char* buf, size_t& pos, int fd, const char* func_name) 
     return 0;
 }
 
-static int add_device_id(const std::string& devid, char* buf, size_t& pos, int fd) {
+static int add_device_id(std::string_view devid, char* buf, size_t& pos, int fd) {
     char line[TMP_LINE_SIZE];
     int n = std::sprintf(line, "DEVICE ID: %s\n", devid.data());
 

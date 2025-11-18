@@ -38,7 +38,6 @@ static void set_device_id() {
 
 int main() {
     set_device_id();
-    printf("device_id: %s\n", gdata.device_id.data());
 
     // Open a listening socket for the cli
     int cli_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
