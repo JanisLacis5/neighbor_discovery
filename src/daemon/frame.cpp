@@ -7,7 +7,7 @@
 #include "types.h"
 
 static int unpack_frame(uint8_t* buf, ssize_t len, EthFrame* dest) {
-    if (len < ETH_HLEN + ETH_PAYLOAD_LEN)
+    if (len < 0 || (size_t)len < ETH_HLEN + ETH_PAYLOAD_LEN)
         return -1;
 
     // Read and check the magic string

@@ -41,7 +41,7 @@ int add_to_epoll(int fd) {
 
 int open_socket(int iface_idx) {
     int fd = socket(AF_PACKET, SOCK_RAW | SOCK_NONBLOCK, htons(ETH_PROTOCOL));
-    if (fd == -1) {
+    if (fd < 0) {
         perror("open_socket (socket)");
         return -1;
     }
@@ -53,7 +53,7 @@ int open_socket(int iface_idx) {
         return -1;
 
     // Add socket to the global fd -> interface map
-    if (gdata.fd_to_iface.size() <= fd)
+    if (gdata.fd_to_iface.size() <= (size_t)fd)
         gdata.fd_to_iface.resize(fd + 1);
     gdata.fd_to_iface[fd] = iface_idx;
 
@@ -61,7 +61,7 @@ int open_socket(int iface_idx) {
 }
 
 void close_sock(int iface_idx) {
-    if (iface_idx <= 0 || iface_idx >= gdata.fd_to_iface.size())
+    if (iface_idx <= 0 || (size_t)iface_idx >= gdata.fd_to_iface.size())
         return;
 
     int fd = gdata.sockets[iface_idx].fd;

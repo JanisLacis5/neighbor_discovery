@@ -32,7 +32,7 @@ static int update_iface_info(struct ifaddrs* ifa) {
         return -1;
     }
 
-    if (gdata.idx_to_info.size() <= ifa_idx)
+    if (gdata.idx_to_info.size() <= (size_t)ifa_idx)
         gdata.idx_to_info.resize(ifa_idx + 1);
 
     struct IfaceInfo& iface_info = gdata.idx_to_info[ifa_idx];
@@ -91,7 +91,7 @@ int process_iface(struct ifaddrs* ifa) {
     if (update_iface_info(ifa) == -1)
         return -1;
 
-    if (gdata.sockets.size() <= ifa_idx)
+    if (gdata.sockets.size() <= (size_t)ifa_idx)
         gdata.sockets.resize(ifa_idx + 1);
     struct SocketInfo& sock_info = gdata.sockets[ifa_idx];
 

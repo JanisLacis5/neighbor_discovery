@@ -53,7 +53,7 @@ static int send_mes(int fd, char* buf, size_t& len) {
 }
 
 static int checkn(int n, char* buf, size_t& pos, int fd, const char* func_name) {
-    if (n < 0 || n > BUF_SIZE) {
+    if (n < 0 || (size_t)n > BUF_SIZE) {
         perror(func_name);
         return -1;
     }
