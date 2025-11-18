@@ -1,10 +1,9 @@
 #include "ifaces.h"
-#include <ifaddrs.h>
 #include <net/if_arp.h>
 #include <netinet/in.h>
 #include <netpacket/packet.h>
-#include <unistd.h>
 #include <cstring>
+#include <filesystem>
 #include "common.h"
 #include "sockets.h"
 #include "types.h"
@@ -52,23 +51,34 @@ static int update_iface_info(struct ifaddrs* ifa) {
 }
 
 bool is_eth(struct ifaddrs* ifa) {
-    int family = ifa->ifa_addr->sa_family;
-    if (family != AF_PACKET)
+    if (!ifa || !ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_PACKET)
         return false;
 
-    struct sockaddr_ll* flags = (struct sockaddr_ll*)ifa->ifa_addr;
-    if (flags->sll_hatype != ARPHRD_ETHER)
+    struct sockaddr_ll* sll = (struct sockaddr_ll*)ifa->ifa_addr;
+    if (sll->sll_hatype != ARPHRD_ETHER)
         return false;
 
-    char pathw[256] = {};
-    char pathd[256] = {};
-    snprintf(pathw, 255, "/sys/class/net/%s/wireless", ifa->ifa_name);
+    namespace fs = std::filesystem;
 
-    // https://www.ibm.com/docs/en/linux-on-systems?topic=ni-matching-devices-1
-    snprintf(pathd, 255, "/sys/class/net/%s/device",
-             ifa->ifa_name);  // TODO: test this one (should check if device is not virtual)
+    // Filter out wireless interfaces
+    fs::path wireless_path = fs::path("/sys/class/net") / ifa->ifa_name / "wireless";
+    if (fs::exists(wireless_path))
+        return false;  // wireless
 
-    return access(pathw, F_OK) != 0 && access(pathd, F_OK) == 0;
+    // Filter out virtual interfaces
+    fs::path class_path = fs::path("/sys/class/net") / ifa->ifa_name;
+    std::error_code ec;
+    fs::path target = fs::read_symlink(class_path, ec);
+    if (ec) {
+        perror("is_eth");
+        return false;
+    }
+
+    auto s = target.string();
+    if (s.find("/virtual/") != std::string::npos)
+        return false;  // virtual
+
+    return true;
 }
 
 int process_iface(struct ifaddrs* ifa) {
