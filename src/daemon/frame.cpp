@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <netpacket/packet.h>
 #include <cstring>
+#include <cinttypes>
 #include "common.h"
 #include "types.h"
 
@@ -78,7 +79,7 @@ void handle_frame(int iface_idx, uint8_t* buf, ssize_t len) {
     std::memcpy(iface.ipv6, frame.ipv6, 16);
 
     // DEBUG
-    printf("received frame from %ld, its mac address is ", sender_device_id);
+    printf("received frame from %" PRIu64 ", its mac address is ", sender_device_id);
     printf("%02x:%02x:%02x:%02x:%02x:%02x\n", frame.source_mac[0], frame.source_mac[1], frame.source_mac[2],
            frame.source_mac[3], frame.source_mac[4], frame.source_mac[5]);
 }

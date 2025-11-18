@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <cstdio>
 #include <cstring>
+#include <cinttypes>
 #include "types.h"
 
 bool all_zeroes(uint8_t buf[], uint8_t len) {
@@ -37,7 +38,7 @@ void cli_listall(int cli_fd) {
         char buf[8194];
         char* bufptr = buf;
 
-        int n = std::sprintf(bufptr, "%ld", devid);
+        int n = std::sprintf(bufptr, "%" PRIu64 "\n", devid);
         bufptr += n;
 
         for (auto& [iface_idx, iface_info] : device.ifaces) {
