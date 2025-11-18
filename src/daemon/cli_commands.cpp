@@ -51,14 +51,19 @@ static int checkn(int n, char* buf, size_t& pos, int fd, const char* func_name) 
     return 0;
 }
 
-static int add_device_id(std::string_view devid, char* buf, size_t& pos, int fd) {
-    char line[TMP_LINE_SIZE];
-    int n = std::sprintf(line, "DEVICE ID: %s\n", devid.data());
+static int add_device_id(const std::string& devid, char* buf, size_t& pos, int fd) {
+    std::string line;
+    line.reserve(TMP_LINE_SIZE);
 
+    line += "DEVICE ID: ";
+    line.append(devid);
+    line.push_back('\n');
+
+    int n = line.size();
     if (checkn(n, buf, pos, fd, "add_device_id") == -1)
         return -1;
 
-    std::memcpy(buf + pos, line, n);
+    std::memcpy(buf + pos, line.data(), n);
     pos += n;
     return 0;
 }
