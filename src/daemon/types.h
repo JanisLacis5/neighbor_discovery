@@ -12,6 +12,7 @@ constexpr size_t MAGIC_LEN = 4;
 constexpr size_t PROTOCOL_LEN = 2;
 constexpr size_t MAC_LEN = 6;
 constexpr size_t DEVICE_ID_LEN = 32;
+constexpr size_t DEVICE_ID_BUF_LEN = 33;
 constexpr size_t IPV4_LEN = 4;
 constexpr size_t IPV6_LEN = 16;
 
@@ -25,7 +26,7 @@ struct EthFrame {
 
     // PAYLOAD (32 bytes)
     uint8_t magic[MAGIC_LEN];          // MKTK
-    uint8_t device_id[DEVICE_ID_LEN];  // ID of the sender
+    uint8_t device_id[DEVICE_ID_BUF_LEN];  // ID of the sender
     uint8_t ipv4[IPV4_LEN];            // Sender's IPv4 on the interface
     uint8_t ipv6[IPV6_LEN];            // Sender's IPv6 on the interface
     // ip's are set to zeroes if they do not exist

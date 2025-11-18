@@ -16,13 +16,13 @@ static int unpack_frame(uint8_t* buf, ssize_t len, EthFrame* dest) {
         return -1;
 
     std::memcpy(dest->dest_mac, buf, MAC_LEN);
-    buf += 6;
+    buf += MAC_LEN;
     std::memcpy(dest->source_mac, buf, MAC_LEN);
-    buf += 6 + 2 + 4;  // we know the protocol already, magic copied already
-    std::memcpy(dest->device_id, buf, DEVICE_ID_LEN);
-    buf += 8;
+    buf += MAC_LEN + PROTOCOL_LEN + MAGIC_LEN;  // we know the protocol already, magic copied already
+    std::memcpy(dest->device_id, buf, DEVICE_ID_BUF_LEN);
+    buf += DEVICE_ID_BUF_LEN;
     std::memcpy(dest->ipv4, buf, IPV4_LEN);
-    buf += 4;
+    buf += IPV4_LEN;
     std::memcpy(dest->ipv6, buf, IPV6_LEN);
 
     return 0;
@@ -77,17 +77,17 @@ static void pack_frame(EthFrame& frame, uint8_t* buf) {
     uint8_t offset = 0;
 
     std::memcpy(buf + offset, frame.dest_mac, MAC_LEN);
-    offset += 6;
+    offset += MAC_LEN;
     std::memcpy(buf + offset, frame.source_mac, MAC_LEN);
-    offset += 6;
+    offset += MAC_LEN;
     std::memcpy(buf + offset, &frame.protocol, PROTOCOL_LEN);
-    offset += 2;
-    std::memcpy(buf + offset, frame.magic, MAC_LEN);
-    offset += 4;
-    std::memcpy(buf + offset, frame.device_id, DEVICE_ID_LEN);
-    offset += 8;
+    offset += PROTOCOL_LEN;
+    std::memcpy(buf + offset, frame.magic, MAGIC_LEN);
+    offset += MAGIC_LEN;
+    std::memcpy(buf + offset, frame.device_id, DEVICE_ID_BUF_LEN);
+    offset += DEVICE_ID_BUF_LEN;
     std::memcpy(buf + offset, frame.ipv4, IPV4_LEN);
-    offset += 4;
+    offset += IPV4_LEN;
     std::memcpy(buf + offset, frame.ipv6, IPV6_LEN);
 }
 
