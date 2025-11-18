@@ -10,8 +10,6 @@
 
 static void fill_info_raw(struct ifaddrs* ifa, IfaceInfo& iface_info) {
     struct sockaddr_ll* sll = (struct sockaddr_ll*)ifa->ifa_addr;
-    // std::strncpy((char*)iface_info.iface_name, ifa->ifa_name, IF_NAMESIZE);
-    // iface_info.iface_name[IF_NAMESIZE - 1] = '\0';
     std::memcpy(iface_info.mac, sll->sll_addr, sll->sll_halen);
 }
 
@@ -153,7 +151,7 @@ int ifaces_refresh() {
 
 static void process_exp_iface(struct Device& device, std::vector<int>& ifaces_todel, int64_t curr_time) {
     for (auto [iface_idx, iface_info] : device.ifaces) {
-        if (curr_time - iface_info.last_seen_ms > 30'000)
+        if (curr_time - iface_info.last_seen_ms > DEVICE_EXP_MS)
             ifaces_todel.push_back(iface_idx);
     }
 }

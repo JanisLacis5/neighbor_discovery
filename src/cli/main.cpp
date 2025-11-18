@@ -6,8 +6,8 @@
 #include <cstring>
 #include "constants.h"
 
-constexpr int BUFSND_SIZE = 512;
-constexpr int BUFRCV_SIZE = 8192;
+constexpr size_t BUFSND_SIZE = 512;
+constexpr size_t BUFRCV_SIZE = 8192;
 
 void pack_buf(char** argv, int argc, uint8_t* buf, size_t& len) {
     uint8_t* bufptr = buf;

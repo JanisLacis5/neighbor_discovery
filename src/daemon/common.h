@@ -10,7 +10,9 @@
     (really unlikely scenario)
 */
 // Every packet will be sent with a protocol that is meant for local development
-#define ETH_PROTOCOL 0x88B5  // ETH_P_802_EX1 in net/ethernet.h file
+constexpr int ETH_PROTOCOL = 0x88B5;  // ETH_P_802_EX1 in net/ethernet.h file
+constexpr size_t DEVICE_EXP_MS = 30'000;
+constexpr size_t HELLO_INTERVAL = 5'000;
 
 inline int64_t get_curr_ms() {
     struct timespec tp = {0, 0};

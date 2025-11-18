@@ -25,9 +25,8 @@ static int del_exp_devices() {
     }
 
     for (auto& [dev_id, device] : gdata.store) {
-        if (curr_time - device.last_seen_ms > 30'000 || device.ifaces.empty()) {
+        if (curr_time - device.last_seen_ms > DEVICE_EXP_MS || device.ifaces.empty())
             todel.push_back(dev_id);
-        }
     }
 
     for (uint64_t id : todel)
@@ -219,7 +218,7 @@ int main() {
 
             if (sock_info.fd == -1)
                 continue;
-            if (curr_time - sock_info.last_sent_ms < 5'000)
+            if (curr_time - sock_info.last_sent_ms < HELLO_INTERVAL)
                 continue;
 
             send_hello(sock_info.fd, idx, iface_info.ipv4, iface_info.ipv6, iface_info.mac);

@@ -7,6 +7,8 @@
 #include "common.h"
 #include "types.h"
 
+constexpr size_t SOCKET_EXP_MS = 15'000;
+
 static int bind_sock(int fd, int iface_idx) {
     struct sockaddr_ll addr;
     std::memset(&addr, 0, sizeof(addr));
@@ -83,7 +85,7 @@ int scks_cleanup() {
     for (size_t idx = 0; idx < gdata.sockets.size(); idx++) {
         SocketInfo& sock_info = gdata.sockets[idx];
         // filter sockets that are idle for 15 seconds or more
-        if (sock_info.fd == -1 || curr_time - sock_info.last_seen_ms < 15'000)
+        if (sock_info.fd == -1 || curr_time - sock_info.last_seen_ms < SOCKET_EXP_MS) 
             continue;
 
         todel.push_back(idx);
