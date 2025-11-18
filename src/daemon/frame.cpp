@@ -19,8 +19,8 @@ static int unpack_frame(uint8_t* buf, ssize_t len, EthFrame* dest) {
     buf += MAC_LEN;
     std::memcpy(dest->source_mac, buf, MAC_LEN);
     buf += MAC_LEN + PROTOCOL_LEN + MAGIC_LEN;  // we know the protocol already, magic copied already
-    std::memcpy(dest->device_id, buf, DEVICE_ID_BUF_LEN);
-    buf += DEVICE_ID_BUF_LEN;
+    std::memcpy(dest->device_id, buf, DEVICE_ID_LEN);
+    buf += DEVICE_ID_LEN;
     std::memcpy(dest->ipv4, buf, IPV4_LEN);
     buf += IPV4_LEN;
     std::memcpy(dest->ipv6, buf, IPV6_LEN);
@@ -57,7 +57,7 @@ void handle_frame(int iface_idx, uint8_t* buf, ssize_t len) {
     int64_t curr_time = get_curr_ms();
 
     std::string sender_device_id;
-    sender_device_id.resize(DEVICE_ID_LEN);
+    sender_device_id.reserve(DEVICE_ID_LEN);
     std::memcpy(sender_device_id.data(), frame.device_id, DEVICE_ID_LEN);
 
     if (sender_device_id == gdata.device_id)
@@ -84,8 +84,8 @@ static void pack_frame(EthFrame& frame, uint8_t* buf) {
     offset += PROTOCOL_LEN;
     std::memcpy(buf + offset, frame.magic, MAGIC_LEN);
     offset += MAGIC_LEN;
-    std::memcpy(buf + offset, frame.device_id, DEVICE_ID_BUF_LEN);
-    offset += DEVICE_ID_BUF_LEN;
+    std::memcpy(buf + offset, frame.device_id, DEVICE_ID_LEN);
+    offset += DEVICE_ID_LEN;
     std::memcpy(buf + offset, frame.ipv4, IPV4_LEN);
     offset += IPV4_LEN;
     std::memcpy(buf + offset, frame.ipv6, IPV6_LEN);
