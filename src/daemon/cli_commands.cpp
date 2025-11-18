@@ -2,14 +2,17 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include "types.h"
 
+constexpr uint16_t BUF_SIZE = 8192;  // 8kb
+constexpr uint16_t TMP_LINE_SIZE = 256;
 static const char alphabet[] = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
-static bool all_zeroes(uint8_t buf[], uint8_t len) {
-    for (int i = 0; i < len; i++) {
+static bool all_zeroes(const uint8_t* buf, size_t len) {
+    for (size_t i = 0; i < len; i++) {
         if (buf[i] != 0)
             return false;
     }
@@ -26,78 +29,163 @@ static void format_devid(uint64_t n, char out[27]) {
         i++;
     }
 
-    // Optional grouping: 4-4-4-1
     snprintf(out, 27, "%.4s-%.4s-%.4s-%c", tmp, tmp + 4, tmp + 8, tmp[12]);
 }
 
-// Data is sent per neighbor - each send is sending everything
-// about exactly one neighboring device
-// TODO: optimize data streaming
-/* Data is sent in a form of ... TODO - WRITE THE FORMAT HERE ...
-    If val is empty, vallen=0 is still added because for each ethernet interface there are
-    the same amount of tokens.*/
-void cli_listall(int cli_fd) {
-    // Process every neighbor, one message per neighbor
-    // TODO: send message only with a full buffer
+static int send_mes(int fd, char* buf, size_t& len) {
+    size_t sent = 0;
+
+    while (sent < len) {
+        ssize_t n = send(fd, buf + sent, len - sent, 0);
+
+        if (sent < 0) {
+            if (errno == EINTR)
+                continue;
+            perror("send_mes");
+            return -1;
+        }
+        if (n == 0)
+            break;
+
+        sent += n;
+    }
+
+    len = 0;
+    return 0;
+}
+
+static int checkn(int n, char* buf, size_t pos, int fd, const char* func_name) {
+    if (n < 0 || n > BUF_SIZE) {
+        perror(func_name);
+        return -1;
+    }
+
+    if (n + pos >= BUF_SIZE) {
+        if (send_mes(fd, buf, pos) == -1)
+            return -1;
+    }
+    return 0;
+}
+
+static int add_device_id(uint64_t devid, char* buf, size_t& pos, int fd) {
+    char idstr[27];
+    format_devid(devid, idstr);
+
+    char line[TMP_LINE_SIZE];
+    int n = std::sprintf(line, "DEVICE ID: %s\n", idstr);
+
+    if (checkn(n, buf, pos, fd, "add_device_id") == -1)
+        return -1;
+
+    std::memcpy(buf + pos, line, n);
+    pos += n;
+    return 0;
+}
+
+static int add_iface_name(int iface_idx, char* buf, size_t& pos, int fd) {
+    char iface_name[IF_NAMESIZE];
+    if (!if_indextoname(iface_idx, iface_name)) {
+        perror("add_iface_name1");
+        return -1;
+    }
+
+    char line[TMP_LINE_SIZE];
+    int n = std::sprintf(line, "\t%s\n", iface_name);
+
+    if (checkn(n, buf, pos, fd, "add_iface_name") == -1)
+        return -1;
+
+    std::memcpy(buf + pos, line, n);
+    pos += n;
+    return 0;
+}
+
+static int add_mac(uint8_t* mac, char* buf, size_t& pos, int fd) {
+    char line[TMP_LINE_SIZE];
+
+    const uint8_t* m = mac;
+    int n = std::sprintf(line, "\t\tMAC: %02x:%02x:%02x:%02x:%02x:%02x\n", m[0], m[1], m[2], m[3], m[4], m[5]);
+
+    if (checkn(n, buf, pos, fd, "add_mac") == -1)
+        return -1;
+
+    std::memcpy(buf + pos, line, n);
+    pos += n;
+    return 0;
+}
+
+static int add_ip(sa_family_t family, uint8_t* ip, char* buf, size_t& pos, int fd) {
+    char line[TMP_LINE_SIZE];
+    int n;
+
+    if (all_zeroes(ip, (family == AF_INET6 ? 16 : 4)))
+        n = std::sprintf(line, "\t\t%s: NONE\n", (family == AF_INET6 ? "IPv6" : "IPv4"));
+
+    else if (family == AF_INET6) {
+        char ip6str[INET6_ADDRSTRLEN];
+        if (!inet_ntop(AF_INET6, ip, ip6str, sizeof(ip6str))) {
+            perror("inet_ntop IPv6");
+            return -1;
+        }
+        n = std::sprintf(line, "\t\tIPv6: %s\n", ip6str);
+    }
+
+    else if (family == AF_INET) {
+        char ip4str[INET_ADDRSTRLEN];
+        if (!inet_ntop(AF_INET, ip, ip4str, sizeof(ip4str))) {
+            perror("inet_ntop IPv4");
+            return -1;
+        }
+        n = std::sprintf(line, "\t\tIPv4: %s\n", ip4str);
+    }
+    else
+        return -1;
+
+    if (checkn(n, buf, pos, fd, "add_ip") == -1)
+        return -1;
+
+    std::memcpy(buf + pos, line, n);
+    pos += n;
+
+    return 0;
+}
+
+void cli_listall(int fd) {
     if (gdata.store.empty()) {
         char buf[] = "No neighbors found\n";
-        if (send(cli_fd, buf, sizeof(buf), 0) == -1)
+        if (send(fd, buf, sizeof(buf), 0) == -1)
             perror("cli_listall (empty)");
 
         return;
     }
 
+    char buf[BUF_SIZE];
+    size_t pos = 0;
+
     for (auto& [devid, device] : gdata.store) {
         if (devid == gdata.device_id)
             continue;
 
-        char buf[8194];
-        char* bufptr = buf;
-
-        char idstr[27];
-        format_devid(devid, idstr);
-        int n = std::sprintf(bufptr, "DEVICE ID: %s\n", idstr);
-        bufptr += n;
+        if (add_device_id(devid, buf, pos, fd) == -1)
+            return;
 
         for (auto& [iface_idx, iface_info] : device.ifaces) {
-            char iface_name[IF_NAMESIZE];
-            char* res = if_indextoname(iface_idx, iface_name);
-            if (res != iface_name) {
-                perror("cli_listall (if_indextoname)");
+            if (add_iface_name(iface_idx, buf, pos, fd) == -1)
                 return;
-            }
 
-            n = std::sprintf(bufptr, "\t%s\n", iface_name);
-            bufptr += n;
+            if (add_mac(iface_info.mac, buf, pos, fd) == -1)
+                return;
 
-            const uint8_t* m = iface_info.mac;
-            n = std::sprintf(bufptr, "\t\tMAC: %02x:%02x:%02x:%02x:%02x:%02x\n", m[0], m[1], m[2], m[3], m[4], m[5]);
-            bufptr += n;
+            if (add_ip(AF_INET, iface_info.ipv4, buf, pos, fd) == -1)
+                return;
 
-            if (all_zeroes(iface_info.ipv4, 4))
-                n = std::sprintf(bufptr, "\t\tIPv4: NONE\n");
-            else {
-                char ip4str[INET_ADDRSTRLEN];
-                inet_ntop(AF_INET, iface_info.ipv4, ip4str, sizeof(ip4str));
-                n = std::sprintf(bufptr, "\t\tIPv4: %s\n", ip4str);
-            }
-            bufptr += n;
-
-            if (all_zeroes(iface_info.ipv6, 16))
-                n = std::sprintf(bufptr, "\t\tIPv6: NONE\n");
-            else {
-                char ipv6str[INET6_ADDRSTRLEN];
-                inet_ntop(AF_INET6, iface_info.ipv6, ipv6str, sizeof(ipv6str));
-                n = std::sprintf(bufptr, "\t\tIPv6: %s\n", ipv6str);
-                bufptr += n;
-            }
+            if (add_ip(AF_INET6, iface_info.ipv6, buf, pos, fd) == -1)
+                return;
         }
+    }
 
-        ssize_t len = bufptr - buf;
-        if (len <= 0)
-            continue;
-
-        if (send(cli_fd, buf, len, 0) == -1)
+    if (pos != 0) {
+        if (send(fd, buf, pos, 0) == -1)
             perror("cli_listall");
     }
 }
