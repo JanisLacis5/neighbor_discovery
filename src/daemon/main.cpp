@@ -60,7 +60,10 @@ int main() {
     }
 
     // Allow everyone to connect
-    chmod(CLI_SOCKET_PATH, 0666);
+    if (chmod(CLI_SOCKET_PATH, 0666) == -1) {
+        perror("chmod");
+        return -1;
+    }
 
     err = listen(cli_fd, SOMAXCONN);
     if (err == -1) {
