@@ -9,7 +9,7 @@
 constexpr size_t BUFSND_SIZE = 512;
 constexpr size_t BUFRCV_SIZE = 8192;
 
-void pack_buf(char** argv, int argc, uint8_t* buf, size_t& len) {
+static void pack_buf(char** argv, int argc, uint8_t* buf, size_t& len) {
     uint8_t* bufptr = buf;
 
     // Calculate buffer size in bytes
@@ -36,16 +36,16 @@ void pack_buf(char** argv, int argc, uint8_t* buf, size_t& len) {
     }
 }
 
-void write_buf(uint8_t* buf, uint16_t len) {
-    ssize_t off = 0;
-    while (off < len) {
-        ssize_t m = write(STDOUT_FILENO, buf + off, len - off);
+static void write_buf(uint8_t* buf, size_t len) {
+    size_t offset = 0;
+    while (offset < len) {
+        ssize_t m = write(STDOUT_FILENO, buf + offset, len - offset);
         if (m < 0)
             return;
-        off += m;
+        offset += m;
     }
 
-    if (len < 0)
+    if (len != offset)
         perror("recv");
 }
 
