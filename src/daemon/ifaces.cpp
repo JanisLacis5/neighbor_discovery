@@ -19,12 +19,12 @@ static void fill_info_raw(struct ifaddrs* ifa, IfaceInfo& iface_info) {
 
 static void fill_info_ip4(struct ifaddrs* ifa, IfaceInfo& iface_info) {
     struct sockaddr_in* sin = (struct sockaddr_in*)ifa->ifa_addr;
-    std::memcpy(iface_info.ipv4, &sin->sin_addr.s_addr, 4);
+    std::memcpy(iface_info.ipv4, &sin->sin_addr.s_addr, IPV4_LEN);
 }
 
 static void fill_info_ip6(struct ifaddrs* ifa, IfaceInfo& iface_info) {
     struct sockaddr_in6* sin6 = (struct sockaddr_in6*)ifa->ifa_addr;
-    std::memcpy(iface_info.ipv6, sin6->sin6_addr.s6_addr, 16);
+    std::memcpy(iface_info.ipv6, sin6->sin6_addr.s6_addr, IPV6_LEN);
 }
 
 static int update_iface_info(struct ifaddrs* ifa) {

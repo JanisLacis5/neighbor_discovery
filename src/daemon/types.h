@@ -6,42 +6,48 @@
 #include <unordered_map>
 #include <vector>
 
-#define ETH_PAYLOAD_LEN 32
+constexpr size_t ETH_PAYLOAD_LEN = 32;
+constexpr size_t MAGIC_LEN = 4;
+constexpr size_t PROTOCOL_LEN = 2;
+constexpr size_t MAC_LEN = 6;
+constexpr size_t DEVICE_ID_LEN = 8;
+constexpr size_t IPV4_LEN = 4;
+constexpr size_t IPV6_LEN = 16;
 
 /* for struct Message, everything is an array of bytes to avoid endianness issues
  as this struct is sent over the network */
 struct EthFrame {
     // HEADER (14 bytes)
-    uint8_t dest_mac[6];
-    uint8_t source_mac[6];
+    uint8_t dest_mac[MAC_LEN];
+    uint8_t source_mac[MAC_LEN];
     uint16_t protocol;
 
     // PAYLOAD (32 bytes)
-    uint8_t magic[4];      // MKTK
-    uint8_t device_id[8];  // ID of the sender
-    uint8_t ipv4[4];       // Sender's IPv4 on the interface
-    uint8_t ipv6[16];      // Sender's IPv6 on the interface
+    uint8_t magic[MAGIC_LEN];          // MKTK
+    uint8_t device_id[DEVICE_ID_LEN];  // ID of the sender
+    uint8_t ipv4[IPV4_LEN];            // Sender's IPv4 on the interface
+    uint8_t ipv6[IPV6_LEN];            // Sender's IPv6 on the interface
     // ip's are set to zeroes if they do not exist
 };
 
 struct IfaceInfo {
     bool is_init = false;  // flag tells whether info in the struct is valid
     uint8_t iface_name[IF_NAMESIZE] = {0};
-    uint8_t mac[6];
-    uint8_t ipv4[4] = {0};
-    uint8_t ipv6[16] = {0};
+    uint8_t mac[MAC_LEN];
+    uint8_t ipv4[IPV4_LEN] = {0};
+    uint8_t ipv6[IPV6_LEN] = {0};
 };
 
 struct IfaceInfoShort {
-    uint8_t mac[6];
-    uint8_t ipv4[4] = {0};
-    uint8_t ipv6[16] = {0};
+    uint8_t mac[MAC_LEN];
+    uint8_t ipv4[IPV4_LEN] = {0};
+    uint8_t ipv6[IPV6_LEN] = {0};
     uint64_t last_seen_ms = 0;  // timestamp when devices were connected on this specific interface
 };
 
 struct Device {
-    uint64_t last_seen_ms;  // timestamp when device was last seen on any interface
-    std::unordered_map<int, IfaceInfoShort> ifaces;
+    uint64_t last_seen_ms;                           // timestamp when device was last seen on any interface
+    std::unordered_map<int, IfaceInfoShort> ifaces;  // local iface idx : iface info on the neighbors machine
 };
 
 struct SocketInfo {

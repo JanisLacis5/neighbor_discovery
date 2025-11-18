@@ -18,13 +18,6 @@ constexpr int MAX_EVENTS = 10;
 constexpr int CLI_REQ_SIZE = 512;
 GlobalData gdata;
 
-/*
-    TODOs:
-        - Remove 'magic' numbers, replace with constexpr's
-        - Clear TODO's in other files
-        - Send responses from daemon in binary
-*/
-
 static int del_exp_devices() {
     std::vector<uint64_t> todel;
     int64_t curr_time = get_curr_ms();
@@ -119,13 +112,13 @@ void read_tokens(uint8_t* buf, size_t len, std::vector<std::string>& tokens) {
 
 int main() {
     // Set the device id
-    uint8_t tmp[8];
-    int err = getrandom(tmp, 8, GRND_RANDOM);
+    uint8_t tmp[DEVICE_ID_LEN];
+    int err = getrandom(tmp, DEVICE_ID_LEN, GRND_RANDOM);
     if (err <= 0) {
         perror("main (random num generation)");
         return -1;
     }
-    std::memcpy(&gdata.device_id, tmp, 8);
+    std::memcpy(&gdata.device_id, tmp, DEVICE_ID_LEN);
 
     // Open a listening socket for the cli
     int cli_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);

@@ -118,7 +118,7 @@ static int add_ip(sa_family_t family, const uint8_t* ip, char* buf, size_t& pos,
     char line[TMP_LINE_SIZE];
     int n;
 
-    if (all_zeroes(ip, (family == AF_INET6 ? 16 : 4)))
+    if (all_zeroes(ip, (family == AF_INET6 ? IPV6_LEN : IPV4_LEN)))
         n = std::sprintf(line, "\t\t%s: NONE\n", (family == AF_INET6 ? "IPv6" : "IPv4"));
 
     else if (family == AF_INET6) {
