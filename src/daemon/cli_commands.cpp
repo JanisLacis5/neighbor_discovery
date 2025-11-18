@@ -4,8 +4,8 @@
 #include <cstring>
 #include "types.h"
 
-constexpr uint16_t BUF_SIZE = 8192;  // 8kb
-constexpr uint16_t TMP_LINE_SIZE = 256;
+constexpr size_t BUF_SIZE = 8192;  // 8kb
+constexpr size_t TMP_LINE_SIZE = 256;
 static const char alphabet[] = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 static bool all_zeroes(const uint8_t* buf, size_t len) {
