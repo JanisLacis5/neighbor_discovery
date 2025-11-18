@@ -3,8 +3,8 @@
 #include <net/ethernet.h>
 #include <netinet/in.h>
 #include <netpacket/packet.h>
-#include <cstring>
 #include <cinttypes>
+#include <cstring>
 #include "common.h"
 #include "types.h"
 

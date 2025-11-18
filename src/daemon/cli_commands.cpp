@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
 #include <cstdio>
 #include <cstring>
@@ -76,22 +77,19 @@ void cli_listall(int cli_fd) {
             if (all_zeroes(iface_info.ipv4, 4))
                 n = std::sprintf(bufptr, "\t\tIPv4: NONE\n");
             else {
-                const uint8_t* ip4 = iface_info.ipv4;
-                n = std::sprintf(bufptr, "\t\tIPv4: %u.%u.%u.%u\n", ip4[0], ip4[1], ip4[2], ip4[3]);
+                char ip4str[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, iface_info.ipv4, ip4str, sizeof(ip4str));
+                n = std::sprintf(bufptr, "\t\tIPv4: %s\n", ip4str);
             }
             bufptr += n;
 
             if (all_zeroes(iface_info.ipv6, 16))
                 n = std::sprintf(bufptr, "\t\tIPv6: NONE\n");
             else {
-                const uint8_t* ip6 = iface_info.ipv6;
-                n = std::sprintf(bufptr, "\t\tIPv6: ");
+                char ipv6str[INET6_ADDRSTRLEN];
+                inet_ntop(AF_INET6, iface_info.ipv6, ipv6str, sizeof(ipv6str));
+                n = std::sprintf(bufptr, "\t\tIPv6: %s\n", ipv6str);
                 bufptr += n;
-
-                for (int i = 0; i < 16; i += 2) {
-                    n = std::sprintf(bufptr, "%02x%02x%s", ip6[i], ip6[i + 1], (i < 14 ? ":" : "\n"));
-                    bufptr += n;
-                }
             }
         }
 
