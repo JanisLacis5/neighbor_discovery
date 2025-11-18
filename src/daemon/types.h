@@ -7,13 +7,13 @@
 #include <unordered_map>
 #include <vector>
 
-constexpr size_t ETH_PAYLOAD_LEN = 32;
 constexpr size_t MAGIC_LEN = 4;
 constexpr size_t PROTOCOL_LEN = 2;
 constexpr size_t MAC_LEN = 6;
 constexpr size_t DEVICE_ID_LEN = 32;
 constexpr size_t IPV4_LEN = 4;
 constexpr size_t IPV6_LEN = 16;
+constexpr size_t ETH_PAYLOAD_LEN = MAGIC_LEN + DEVICE_ID_LEN + IPV4_LEN + IPV6_LEN;
 
 /* for struct Message, everything is an array of bytes to avoid endianness issues
  as this struct is sent over the network */
@@ -23,7 +23,7 @@ struct EthFrame {
     uint8_t source_mac[MAC_LEN];
     uint16_t protocol;
 
-    // PAYLOAD (32 bytes)
+    // PAYLOAD (56 bytes)
     uint8_t magic[MAGIC_LEN];          // MKTK
     uint8_t device_id[DEVICE_ID_LEN];  // ID of the sender
     uint8_t ipv4[IPV4_LEN];            // Sender's IPv4 on the interface
