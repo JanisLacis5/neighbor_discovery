@@ -70,7 +70,7 @@ void handle_frame(int iface_idx, uint8_t* buf, ssize_t len) {
     Device& device = gdata.store[sender_device_id];
     device.last_seen_ms = curr_time;
 
-    IfaceInfoShort& iface = device.ifaces[iface_idx];
+    IfaceInfo& iface = device.ifaces[iface_idx];
     iface.last_seen_ms = curr_time;
     std::memcpy(iface.mac, frame.source_mac, MAC_LEN);
     std::memcpy(iface.ipv4, frame.ipv4, IPV4_LEN);

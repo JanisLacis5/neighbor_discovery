@@ -31,14 +31,7 @@ struct EthFrame {
 };
 
 struct IfaceInfo {
-    bool is_init = false;  // flag tells whether info in the struct is valid
-    uint8_t iface_name[IF_NAMESIZE] = {0};
-    uint8_t mac[MAC_LEN];
-    uint8_t ipv4[IPV4_LEN] = {0};
-    uint8_t ipv6[IPV6_LEN] = {0};
-};
-
-struct IfaceInfoShort {
+    // uint8_t iface_name[IF_NAMESIZE] = {0};
     uint8_t mac[MAC_LEN];
     uint8_t ipv4[IPV4_LEN] = {0};
     uint8_t ipv6[IPV6_LEN] = {0};
@@ -47,7 +40,7 @@ struct IfaceInfoShort {
 
 struct Device {
     uint64_t last_seen_ms;                           // timestamp when device was last seen on any interface
-    std::unordered_map<int, IfaceInfoShort> ifaces;  // local iface idx : iface info on the neighbors machine
+    std::unordered_map<int, IfaceInfo> ifaces;  // local iface idx : iface info on the neighbors machine
 };
 
 struct SocketInfo {

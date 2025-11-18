@@ -10,10 +10,9 @@
 
 static void fill_info_raw(struct ifaddrs* ifa, IfaceInfo& iface_info) {
     struct sockaddr_ll* sll = (struct sockaddr_ll*)ifa->ifa_addr;
-    std::strncpy((char*)iface_info.iface_name, ifa->ifa_name, IF_NAMESIZE);
-    iface_info.iface_name[IF_NAMESIZE - 1] = '\0';
+    // std::strncpy((char*)iface_info.iface_name, ifa->ifa_name, IF_NAMESIZE);
+    // iface_info.iface_name[IF_NAMESIZE - 1] = '\0';
     std::memcpy(iface_info.mac, sll->sll_addr, sll->sll_halen);
-    iface_info.is_init = true;
 }
 
 static void fill_info_ip4(struct ifaddrs* ifa, IfaceInfo& iface_info) {
@@ -40,7 +39,7 @@ static int update_iface_info(struct ifaddrs* ifa) {
 
     struct IfaceInfo& iface_info = gdata.idx_to_info[ifa_idx];
 
-    if (family == AF_PACKET && !iface_info.is_init)
+    if (family == AF_PACKET)
         fill_info_raw(ifa, iface_info);
     else if (family == AF_INET)
         fill_info_ip4(ifa, iface_info);
