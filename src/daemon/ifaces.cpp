@@ -28,7 +28,6 @@ static void fill_info_ip6(struct ifaddrs* ifa, IfaceInfo& iface_info) {
 }
 
 static int update_iface_info(struct ifaddrs* ifa) {
-    int64_t curr_time = get_curr_ms();
     int family = ifa->ifa_addr->sa_family;
 
     int ifa_idx = if_nametoindex(ifa->ifa_name);

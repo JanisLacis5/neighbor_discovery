@@ -7,7 +7,7 @@
 
 bool all_zeroes(uint8_t buf[], uint8_t len) {
     for (int i = 0; i < len; i++) {
-        if (buf[i] == 0)
+        if (buf[i] != 0)
             return false;
     }
     return true;
