@@ -77,9 +77,6 @@ void close_sock(int iface_idx) {
 
 int scks_cleanup() {
     int64_t curr_time = get_curr_ms();
-    if (curr_time < 0)
-        return -1;
-
     std::vector<int> todel;
 
     for (size_t idx = 0; idx < gdata.sockets.size(); idx++) {

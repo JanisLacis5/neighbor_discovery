@@ -19,10 +19,6 @@ GlobalData gdata;
 static int del_exp_devices() {
     std::vector<uint64_t> todel;
     int64_t curr_time = get_curr_ms();
-    if (curr_time < 0) {
-        perror("del_exp_devices");
-        return -1;
-    }
 
     for (auto& [dev_id, device] : gdata.store) {
         if (curr_time - device.last_seen_ms > DEVICE_EXP_MS || device.ifaces.empty())

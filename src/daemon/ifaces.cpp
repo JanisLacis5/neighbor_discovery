@@ -158,10 +158,6 @@ static void process_exp_iface(struct Device& device, std::vector<int>& ifaces_to
 
 int del_exp_ifaces() {
     int64_t curr_time = get_curr_ms();
-    if (curr_time < 0) {
-        perror("del_exp_ifaces");
-        return -1;
-    }
 
     for (auto& [dev_id, device] : gdata.store) {
         std::vector<int> ifaces_todel;
