@@ -92,3 +92,38 @@ int scks_cleanup() {
     }
     return 0;
 }
+
+int read_full(int accfd, uint8_t* buf, size_t& len) {
+    // Read the first 4 bytes to figure out the length of the message
+    while (len < 4) {
+        ssize_t recvlen = recv(accfd, buf + len, 4 - len, 0);
+        if (recvlen <= 0) {
+            perror("read_full");
+            return -1;
+        }
+
+        len += recvlen;
+    }
+
+    // Read the total length
+    size_t total_len;
+    std::memcpy(&total_len, buf, 4);
+
+    // Read the rest of the message
+    while (len < total_len) {
+        ssize_t recvlen = recv(accfd, buf + len, total_len - len, 0);
+        if (recvlen <= 0) {
+            perror("read_full1");
+            return -1;
+        }
+
+        len += recvlen;
+    }
+
+    if (total_len != len) {
+        perror("read_full2");
+        return -1;
+    }
+
+    return 0;
+}

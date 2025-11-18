@@ -1,3 +1,4 @@
+#include "cli_commands.h"
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstdio>
