@@ -82,7 +82,7 @@ int scks_cleanup() {
     for (size_t idx = 0; idx < gdata.sockets.size(); idx++) {
         SocketInfo& sock_info = gdata.sockets[idx];
         // filter sockets that are idle for 15 seconds or more
-        if (sock_info.fd == -1 || curr_time - sock_info.last_seen_ms < SOCKET_EXP_MS) 
+        if (sock_info.fd == -1 || curr_time - sock_info.last_seen_ms < SOCKET_EXP_MS)
             continue;
 
         todel.push_back(idx);

@@ -1,6 +1,6 @@
 #include "cli_tokens.h"
-#include <cstdio>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -43,5 +43,3 @@ void read_tokens(uint8_t* buf, size_t len, std::vector<std::string>& tokens) {
         buf += tlen;
     }
 }
-
-

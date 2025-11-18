@@ -1,8 +1,8 @@
 #ifndef SOCKETS_H
 #define SOCKETS_H
 
-#include <cstdio>
 #include <cstdint>
+#include <cstdio>
 
 int open_socket(int iface_idx);
 void close_sock(int iface_idx);

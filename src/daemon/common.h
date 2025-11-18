@@ -1,8 +1,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <cstdint>
 #include <chrono>
+#include <cstdint>
 
 /*
     Hard coded value so that there is no risk different machines having different naming

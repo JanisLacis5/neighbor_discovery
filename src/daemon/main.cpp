@@ -3,6 +3,7 @@
 #include <sys/un.h>
 #include <csignal>
 #include <cstring>
+#include <fstream>
 #include <string>
 #include "cli_tokens.h"
 #include "common.h"
@@ -17,7 +18,7 @@ constexpr int CLI_REQ_SIZE = 512;
 GlobalData gdata;
 
 static int del_exp_devices() {
-    std::vector<uint64_t> todel;
+    std::vector<std::string> todel;
     int64_t curr_time = get_curr_ms();
 
     for (auto& [dev_id, device] : gdata.store) {
@@ -25,20 +26,19 @@ static int del_exp_devices() {
             todel.push_back(dev_id);
     }
 
-    for (uint64_t id : todel)
+    for (std::string& id : todel)
         gdata.store.erase(id);
     return 0;
 }
 
+static void set_device_id() {
+    std::ifstream id_file("/etc/machine-id");
+    std::getline(id_file, gdata.device_id);
+}
+
 int main() {
-    // Set the device id
-    uint8_t tmp[DEVICE_ID_LEN];
-    int err = getrandom(tmp, DEVICE_ID_LEN, GRND_RANDOM);
-    if (err <= 0) {
-        perror("main (random num generation)");
-        return -1;
-    }
-    std::memcpy(&gdata.device_id, tmp, DEVICE_ID_LEN);
+    set_device_id();
+    printf("device_id: %s\n", gdata.device_id.data());
 
     // Open a listening socket for the cli
     int cli_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
@@ -47,7 +47,7 @@ int main() {
     addr.sun_family = AF_UNIX;
     std::memcpy(addr.sun_path, CLI_SOCKET_PATH, sizeof(CLI_SOCKET_PATH));
 
-    err = unlink(CLI_SOCKET_PATH);
+    int err = unlink(CLI_SOCKET_PATH);
     if (err == -1 && errno != ENOENT) {
         perror("main (unlink)");
         return -1;

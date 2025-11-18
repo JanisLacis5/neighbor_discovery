@@ -3,6 +3,7 @@
 
 #include <net/if.h>
 #include <cstdint>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -10,7 +11,7 @@ constexpr size_t ETH_PAYLOAD_LEN = 32;
 constexpr size_t MAGIC_LEN = 4;
 constexpr size_t PROTOCOL_LEN = 2;
 constexpr size_t MAC_LEN = 6;
-constexpr size_t DEVICE_ID_LEN = 8;
+constexpr size_t DEVICE_ID_LEN = 32;
 constexpr size_t IPV4_LEN = 4;
 constexpr size_t IPV6_LEN = 16;
 
@@ -39,7 +40,7 @@ struct IfaceInfo {
 };
 
 struct Device {
-    uint64_t last_seen_ms;                           // timestamp when device was last seen on any interface
+    uint64_t last_seen_ms;                      // timestamp when device was last seen on any interface
     std::unordered_map<int, IfaceInfo> ifaces;  // local iface idx : iface info on the neighbors machine
 };
 
@@ -51,8 +52,8 @@ struct SocketInfo {
 
 struct GlobalData {
     int epollfd;
-    uint64_t device_id;                                   // In host order (to send over the network, htonll)
-    std::unordered_map<uint64_t, Device> store;           // device id : device info
+    std::string device_id;
+    std::unordered_map<std::string, Device> store;        // device id : device info
     std::vector<int> fd_to_iface{10, -1};                 // tells on which interface socket with `fd` is opened
     std::vector<IfaceInfo> idx_to_info{10, IfaceInfo{}};  // maps ifa_idx -> InterfaceInfo struct
 

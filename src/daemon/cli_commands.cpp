@@ -17,19 +17,6 @@ static bool all_zeroes(const uint8_t* buf, size_t len) {
     return true;
 }
 
-static void format_devid(uint64_t n, char out[27]) {
-    char tmp[16];
-    int i = 0;
-
-    while (i < 13) {
-        tmp[12 - i] = alphabet[n & 0x1F];
-        n >>= 5;
-        i++;
-    }
-
-    snprintf(out, 27, "%.4s-%.4s-%.4s-%c", tmp, tmp + 4, tmp + 8, tmp[12]);
-}
-
 static int send_mes(int fd, char* buf, size_t& len) {
     size_t sent = 0;
 
@@ -65,12 +52,9 @@ static int checkn(int n, char* buf, size_t& pos, int fd, const char* func_name) 
     return 0;
 }
 
-static int add_device_id(uint64_t devid, char* buf, size_t& pos, int fd) {
-    char idstr[27];
-    format_devid(devid, idstr);
-
+static int add_device_id(const std::string& devid, char* buf, size_t& pos, int fd) {
     char line[TMP_LINE_SIZE];
-    int n = std::sprintf(line, "DEVICE ID: %s\n", idstr);
+    int n = std::sprintf(line, "DEVICE ID: %s\n", devid.data());
 
     if (checkn(n, buf, pos, fd, "add_device_id") == -1)
         return -1;
