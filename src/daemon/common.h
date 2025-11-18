@@ -2,8 +2,7 @@
 #define COMMON_H
 
 #include <cstdint>
-#include <cstdio>
-#include <ctime>
+#include <chrono>
 
 /*
     Hard coded value so that there is no risk different machines having different naming
@@ -15,15 +14,9 @@ constexpr size_t DEVICE_EXP_MS = 30'000;
 constexpr size_t HELLO_INTERVAL = 5'000;
 
 inline int64_t get_curr_ms() {
-    struct timespec tp = {0, 0};
-
-    int err = clock_gettime(CLOCK_MONOTONIC, &tp);
-    if (err) {
-        perror("get_curr_ms");
-        return -1;
-    }
-
-    return tp.tv_sec * 1000 + tp.tv_nsec / 1000 / 1000;
+    auto now = std::chrono::steady_clock::now();
+    auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
+    return now_ms.count();
 }
 
 inline uint64_t ntohll(uint64_t n) {
